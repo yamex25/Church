@@ -342,7 +342,310 @@ export default function HRManagement() {
   };
 
   const handlePrintPayslip = () => {
-    window.print();
+    // Create a new window for printing to avoid modal interference
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow pop-ups for this site to print payslips');
+      return;
+    }
+    
+    // Get the payslip content
+    const payslipContent = document.getElementById('payslip-content');
+    if (!payslipContent) return;
+    
+    // Create the print document
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Payslip - ${selectedPayslip.employeeName} - ${selectedPayslip.month}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              padding: 20px;
+              background: white;
+            }
+            .payslip-container {
+              max-width: 800px;
+              margin: 0 auto;
+              background: white;
+              position: relative;
+            }
+            .watermark {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) rotate(45deg);
+              font-size: 80px;
+              font-weight: 900;
+              color: #3b82f6;
+              opacity: 0.03;
+              pointer-events: none;
+            }
+            .header-bar {
+              height: 16px;
+              background: #3b82f6;
+              margin-bottom: 20px;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 40px;
+            }
+            .logo-section {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .logo {
+              width: 32px;
+              height: 32px;
+              background: #3b82f6;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: 900;
+              border-radius: 8px;
+            }
+            .company-name {
+              font-size: 20px;
+              font-weight: 900;
+              color: #000;
+              letter-spacing: -0.05em;
+            }
+            .subtitle {
+              color: #3b82f6;
+              font-weight: 900;
+              letter-spacing: 0.2em;
+              font-size: 10px;
+              text-transform: uppercase;
+            }
+            .payslip-title {
+              text-align: right;
+            }
+            .payslip-title h3 {
+              font-size: 32px;
+              font-weight: 900;
+              font-style: italic;
+              letter-spacing: -0.05em;
+              margin-bottom: 4px;
+            }
+            .payslip-title .month {
+              color: #6b7280;
+              font-weight: 900;
+              letter-spacing: 0.3em;
+              font-size: 10px;
+              text-transform: uppercase;
+            }
+            .employee-info {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 40px;
+              margin-bottom: 40px;
+              padding-bottom: 40px;
+              border-bottom: 2px dashed #e5e7eb;
+            }
+            .info-section {
+              space-y: 20px;
+            }
+            .info-box {
+              background: #f9fafb;
+              padding: 16px;
+              border-radius: 16px;
+              border: 1px solid #f3f4f6;
+              margin-bottom: 20px;
+            }
+            .info-label {
+              color: #6b7280;
+              font-weight: 900;
+              letter-spacing: 0.1em;
+              font-size: 9px;
+              text-transform: uppercase;
+              margin-bottom: 6px;
+            }
+            .employee-name {
+              font-size: 20px;
+              font-weight: 900;
+              color: #000;
+              margin-bottom: 4px;
+            }
+            .employee-role {
+              font-weight: 700;
+              font-size: 12px;
+              color: #3b82f6;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            .transaction-info {
+              text-align: right;
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-end;
+            }
+            .transaction-info > div {
+              margin-bottom: 20px;
+            }
+            .transaction-ref {
+              font-family: monospace;
+              font-size: 12px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: -0.05em;
+              color: #9ca3af;
+            }
+            .salary-section {
+              margin-bottom: 40px;
+            }
+            .salary-title {
+              color: #6b7280;
+              font-weight: 900;
+              letter-spacing: 0.2em;
+              font-size: 10px;
+              text-transform: uppercase;
+              margin-bottom: 16px;
+            }
+            .salary-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 16px 0;
+              border-bottom: 1px dotted #e5e7eb;
+            }
+            .salary-label {
+              font-weight: 700;
+              font-size: 14px;
+              color: #4b5563;
+            }
+            .salary-amount {
+              font-weight: 900;
+              font-size: 16px;
+              color: #000;
+            }
+            .total-row {
+              border-top: 2px solid #3b82f6;
+              margin-top: 20px;
+              padding-top: 20px;
+            }
+            .total-label {
+              color: #3b82f6 !important;
+              font-size: 16px !important;
+            }
+            .total-amount {
+              color: #3b82f6 !important;
+              font-size: 20px !important;
+            }
+            .footer {
+              margin-top: 60px;
+              padding-top: 20px;
+              border-top: 1px solid #e5e7eb;
+              text-align: center;
+              color: #6b7280;
+              font-size: 12px;
+            }
+            @media print {
+              body { margin: 0; }
+              .payslip-container { 
+                box-shadow: none;
+                border: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="payslip-container">
+            <div class="watermark">OFFICIAL</div>
+            <div class="header-bar"></div>
+            
+            <div class="header">
+              <div class="logo-section">
+                <div class="logo">C</div>
+                <div>
+                  <div class="company-name">CHURCH MANAGER</div>
+                  <div class="subtitle">Official Payment Advice</div>
+                </div>
+              </div>
+              <div class="payslip-title">
+                <h3>PAYSLIP</h3>
+                <div class="month">${selectedPayslip.month}</div>
+              </div>
+            </div>
+
+            <div class="employee-info">
+              <div class="info-section">
+                <div class="info-box">
+                  <div class="info-label">Employee Details</div>
+                  <div class="employee-name">${selectedPayslip.employeeName}</div>
+                  <div class="employee-role">${employees.find(e => e.id === selectedPayslip.employeeId)?.role || 'N/A'}</div>
+                </div>
+                <div>
+                  <div class="info-label">Ministry Department</div>
+                  <div style="font-weight: 700; font-size: 14px;">${employees.find(e => e.id === selectedPayslip.employeeId)?.department || 'N/A'}</div>
+                </div>
+              </div>
+              <div class="transaction-info">
+                <div>
+                  <div class="info-label">Transaction Ref</div>
+                  <div class="transaction-ref">#CM-${selectedPayslip.id?.slice(0, 8).toUpperCase()}</div>
+                </div>
+                <div>
+                  <div class="info-label">Settlement Method</div>
+                  <div style="font-weight: 700; font-size: 14px;">${selectedPayslip.paymentMethod}</div>
+                </div>
+                <div>
+                  <div class="info-label">Identification / TIN</div>
+                  <div style="font-weight: 700; font-size: 14px; letter-spacing: 0.05em;">${employees.find(e => e.id === selectedPayslip.employeeId)?.tinNumber || 'NON-FILER'}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="salary-section">
+              <div class="salary-title">Salary Breakdown</div>
+              
+              <div class="salary-row">
+                <div class="salary-label">Basic Monthly Earnings</div>
+                <div class="salary-amount">${formatCurrency(selectedPayslip.totalSalary)}</div>
+              </div>
+              
+              <div class="salary-row">
+                <div class="salary-label">Amount Paid</div>
+                <div class="salary-amount">${formatCurrency(selectedPayslip.paidAmount)}</div>
+              </div>
+              
+              <div class="salary-row">
+                <div class="salary-label">Outstanding Balance</div>
+                <div class="salary-amount">${formatCurrency(selectedPayslip.balance)}</div>
+              </div>
+              
+              <div class="salary-row total-row">
+                <div class="salary-label total-label">Net Payment This Period</div>
+                <div class="salary-amount total-amount">${formatCurrency(selectedPayslip.paidAmount)}</div>
+              </div>
+            </div>
+
+            <div class="footer">
+              <div>This is an official church payment document</div>
+              <div>Generated on ${new Date().toLocaleDateString()}</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    
+    // Wait for content to load, then print
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   const handleAddDept = async (e: React.FormEvent) => {
