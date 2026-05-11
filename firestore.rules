@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net - Block access to any document not explicitly matched
+    // Note: This will be applied after all specific matches are checked
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrapAdmin() {
+      return isSignedIn() && request.auth.token.email == 'yamexgilbs@gmail.com';
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && (isBootstrapAdmin() || getUserData().get('role', '') == role);
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (isSignedIn() && (getUserData().get('role', '') == 'Admin' || getUserData().get('role', '') == 'Pastor'));
+    }
+
+    function isStaff() {
+      return isBootstrapAdmin() || (isSignedIn() && getUserData().get('role', '') in ['Admin', 'Pastor', 'Treasurer', 'Secretary', 'Department Leader']);
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Members Collection ---
+    match /members/{memberId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Finance Collection ---
+    match /finance/{recordId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Prayer Requests ---
+    match /prayerRequests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Requisitions ---
+    match /requisitions/{reqId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Pledges ---
+    match /pledges/{pledgeId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Visitors ---
+    match /visitors/{visitorId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Broadcasts ---
+    match /broadcasts/{broadcastId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Assets ---
+    match /assets/{assetId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Events ---
+    match /events/{eventId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Attendance ---
+    match /attendance/{atId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Employees (HR) ---
+    match /employees/{empId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Payroll ---
+    match /payroll/{payId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Admins (Role verification) ---
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+    }
+    
+    // --- Departments ---
+    match /departments/{deptId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

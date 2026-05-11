@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+
+  --color-church-blue: #1E40AF;
+  --color-church-yellow: #FDE047;
+  --color-church-yellow-dark: #EAB308;
+  --color-church-white: #FFFFFF;
+  --color-church-soft: #F8FAFC;
+  --color-church-black: #0F172A;
+  --color-church-gray: #64748B;
+}
+
+@layer base {
+  body {
+    @apply bg-church-soft text-church-black font-sans;
+  }
+  
+  h1, h2, h3, .font-display {
+    @apply font-display text-church-black;
+  }
+}

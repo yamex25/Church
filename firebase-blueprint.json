@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "Church member profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+        "dateOfBirth": { "type": "string" },
+        "membershipStatus": { "type": "string", "enum": ["Active", "Visitor", "Inactive"] },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "photoUrl": { "type": "string" },
+        "qrCode": { "type": "string" }
+      },
+      "required": ["name", "email", "membershipStatus"]
+    },
+    "FinanceRecord": {
+      "title": "Finance Record",
+      "description": "Financial transactions like tithes and offerings",
+      "type": "object",
+      "properties": {
+        "memberId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "type": { "type": "string", "enum": ["Tithe", "Offering", "Donation", "Other"] },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "recordedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "amount", "date", "recordedBy"]
+    },
+    "PrayerRequest": {
+      "title": "Prayer Request",
+      "description": "Spiritual intentions shared by members",
+      "type": "object",
+      "properties": {
+        "memberId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "requestText": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Answered"] },
+        "isPrivate": { "type": "boolean" },
+        "visibility": { "type": "string", "enum": ["Public", "Pastors", "Department"] },
+        "targetDepartment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["memberId", "requestText", "status", "visibility"]
+    },
+    "Attendance": {
+      "title": "Attendance Record",
+      "description": "Check-in records for services",
+      "type": "object",
+      "properties": {
+        "memberId": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Excused"] },
+        "recordedBy": { "type": "string" }
+      },
+      "required": ["memberId", "timestamp", "status"]
+    },
+    "AppUser": {
+      "title": "App User",
+      "description": "User account metadata and permissions",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Pastor", "Treasurer", "Secretary", "Department Leader", "Member"] },
+        "memberId": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "members": {
+      "schema": "Member",
+      "description": "List of all church members"
+    },
+    "finance": {
+      "schema": "FinanceRecord",
+      "description": "Ledger of all financial transactions"
+    },
+    "prayerRequests": {
+      "schema": "PrayerRequest",
+      "description": "Wall of prayer requests"
+    },
+    "attendance": {
+      "schema": "Attendance",
+      "description": "Service attendance logs"
+    },
+    "users": {
+      "schema": "AppUser",
+      "description": "Mapping of auth UIDs to app roles and member profiles"
+    }
+  }
+}
