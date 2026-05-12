@@ -256,88 +256,114 @@ export default function PortalContributions() {
 
   return (
     <div className="space-y-10 text-church-black">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-display font-black tracking-tight text-church-black">Contribution Ledger</h2>
-          <p className="text-xs font-bold text-church-gray uppercase tracking-widest mt-1">Faithful Stewardship</p>
-        </div>
-        <button 
-          onClick={handleDownload}
-          className="p-3 bg-white border-2 border-church-blue/10 rounded-2xl text-church-blue shadow-sm hover:bg-church-soft transition-all"
-        >
-          <Download className="w-5 h-5" />
-        </button>
+      <div className="text-center">
+        <h2 className="text-4xl font-display font-black tracking-tight text-church-black mb-4">Contribution Ledger</h2>
+        <p className="text-sm font-bold text-church-gray uppercase tracking-widest">Faithful Stewardship</p>
       </div>
 
-      {/* Summary Stat */}
-      <div className="bg-church-blue p-10 rounded-[48px] text-white shadow-2xl shadow-church-blue/20 relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-             <TrendingUp className="w-5 h-5 text-church-yellow" />
-             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Annual Giving (2026)</span>
+      {/* Main Message Card */}
+      <div className="bg-gradient-to-br from-church-blue to-church-blue/90 p-12 rounded-[48px] text-white shadow-2xl shadow-church-blue/30 relative overflow-hidden">
+        <div className="relative z-10 text-center">
+          <div className="flex justify-center mb-6">
+            <div className="bg-church-yellow/20 p-6 rounded-full">
+              <Church className="w-16 h-16 text-church-yellow" />
+            </div>
           </div>
-          <h3 className="text-5xl font-display font-black mb-10 tracking-tight">{formatCurrency(totalGiving)}</h3>
-          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
-             <div className="bg-white/10 px-5 py-2.5 rounded-full border border-white/5">
-               Last: {formatCurrency(lastGift)}
-             </div>
-             <div className="bg-white/10 px-5 py-2.5 rounded-full border border-white/5">
-               Avg: {formatCurrency(avgGift)}
-             </div>
-          </div>
-        </div>
-        <div className="absolute -right-10 -bottom-10 opacity-5">
-           <Church className="w-64 h-64" />
-        </div>
-      </div>
-
-      {/* Give Button */}
-      <button 
-        onClick={handleRecordContribution}
-        className="w-full bg-church-yellow text-church-black py-6 rounded-3xl font-black text-xs uppercase tracking-[0.25em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-church-yellow/20 flex items-center justify-center gap-4"
-      >
-        <CreditCard className="w-5 h-5" />
-        Record Contribution
-      </button>
-
-      {/* List */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <h3 className="text-xs font-black text-church-gray uppercase tracking-[0.2em]">Transaction History</h3>
-          <span className="text-[10px] font-bold text-church-blue bg-church-blue/5 px-3 py-1 rounded-full uppercase tracking-widest">Verified Records</span>
-        </div>
-        <div className="space-y-4">
-          {records.map((record) => (
-            <div key={record.id} className="bg-white p-6 rounded-[32px] border border-church-blue/5 shadow-xl shadow-church-blue/5 flex items-center justify-between group hover:border-church-blue/20 transition-all cursor-default">
-              <div className="flex items-center gap-5">
-                <div className="bg-church-soft p-4 rounded-2xl text-church-blue group-hover:bg-church-blue group-hover:text-white transition-all shadow-sm">
-                  <ReceiptText className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="font-bold text-lg text-church-black">{record.type}</p>
-                  <p className="text-[10px] text-church-gray font-bold uppercase tracking-[0.1em]">{formatDate(record.date)}</p>
-                </div>
+          
+          <h3 className="text-3xl font-display font-black mb-6 tracking-tight">
+            Under Development
+          </h3>
+          
+          <p className="text-lg leading-relaxed mb-8 text-white/90 max-w-2xl mx-auto">
+            We are currently working on enhancing our online contribution system to provide you with a seamless digital giving experience.
+          </p>
+          
+          <div className="bg-white/10 backdrop-blur-sm p-8 rounded-[32px] border border-white/20 mb-8">
+            <h4 className="text-xl font-bold mb-4 text-church-yellow">How to Make Your Contributions</h4>
+            <p className="text-white/90 leading-relaxed mb-6">
+              For now, please make your contributions through our Church Accounts Office. Our dedicated team is ready to assist you with:
+            </p>
+            
+            <div className="grid md:grid-cols-2 gap-4 text-left">
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <h5 className="font-bold text-church-yellow mb-2">Tithes & Offerings</h5>
+                <p className="text-sm text-white/80">Weekly tithes and special offerings</p>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-church-black tracking-tight">{formatCurrency(record.amount)}</p>
-                <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                   <p className="text-[9px] text-green-600 font-black uppercase tracking-widest leading-none">Cleared</p>
-                </div>
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <h5 className="font-bold text-church-yellow mb-2">Building Fund</h5>
+                <p className="text-sm text-white/80">Church development and expansion projects</p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <h5 className="font-bold text-church-yellow mb-2">Mission Support</h5>
+                <p className="text-sm text-white/80">Outreach and missionary work</p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <h5 className="font-bold text-church-yellow mb-2">Special Projects</h5>
+                <p className="text-sm text-white/80">Church programs and initiatives</p>
               </div>
             </div>
-          ))}
+          </div>
+          
+          <div className="flex items-center justify-center gap-6">
+            <div className="bg-church-yellow text-church-black px-8 py-4 rounded-full font-black text-sm uppercase tracking-widest shadow-xl shadow-church-yellow/20">
+              Church Office Open
+            </div>
+            <div className="bg-white/10 px-8 py-4 rounded-full font-bold text-sm uppercase tracking-widest border border-white/20">
+              Mon - Fri: 8AM - 5PM
+            </div>
+          </div>
         </div>
-      </section>
+        
+        {/* Background decoration */}
+        <div className="absolute -right-20 -bottom-20 opacity-10">
+          <Church className="w-96 h-96" />
+        </div>
+      </div>
 
-      {/* Note */}
-      <div className="bg-white p-8 rounded-[32px] border-l-8 border-church-yellow shadow-xl shadow-church-blue/5 flex gap-5 items-start">
-        <div className="bg-church-yellow/20 p-2 rounded-xl text-church-black">
-          <Info className="w-5 h-5" />
+      {/* Contact Information */}
+      <div className="bg-white p-10 rounded-[48px] border-2 border-church-yellow shadow-xl shadow-church-blue/10">
+        <div className="text-center">
+          <h4 className="text-2xl font-display font-black mb-6 text-church-black">Need Assistance?</h4>
+          <p className="text-church-gray mb-8 leading-relaxed">
+            Our accounts team is here to help you with your contributions and answer any questions you may have.
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-church-soft p-6 rounded-2xl">
+              <div className="bg-church-blue w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <h5 className="font-bold text-church-black mb-2">Office Hours</h5>
+              <p className="text-sm text-church-gray">Monday - Friday<br />8:00 AM - 5:00 PM</p>
+            </div>
+            
+            <div className="bg-church-soft p-6 rounded-2xl">
+              <div className="bg-church-blue w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CreditCard className="w-6 h-6 text-white" />
+              </div>
+              <h5 className="font-bold text-church-black mb-2">Payment Methods</h5>
+              <p className="text-sm text-church-gray">Cash, Mobile Money<br />Bank Transfer, Cheques</p>
+            </div>
+            
+            <div className="bg-church-soft p-6 rounded-2xl">
+              <div className="bg-church-blue w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Info className="w-6 h-6 text-white" />
+              </div>
+              <h5 className="font-bold text-church-black mb-2">Get Help</h5>
+              <p className="text-sm text-church-gray">Visit the church office<br />Call our accounts team</p>
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-church-gray leading-relaxed font-bold">
-          Note: Online contributions may take up to 24 hours to reflect in your history. Physical tithes given in church are updated weekly by the Treasurer.
-        </p>
+      </div>
+
+      {/* Thank You Message */}
+      <div className="bg-gradient-to-r from-church-yellow to-church-yellow/80 p-8 rounded-[32px] text-church-black shadow-xl shadow-church-yellow/20">
+        <div className="text-center">
+          <h4 className="text-2xl font-display font-black mb-4">Thank You for Your Faithful Giving</h4>
+          <p className="text-sm leading-relaxed font-bold">
+            Your contributions help us advance God's kingdom and serve our community. We appreciate your partnership in ministry.
+          </p>
+        </div>
       </div>
     {/* Payment Modal */}
       {showPaymentModal && (
