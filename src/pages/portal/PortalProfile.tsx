@@ -13,20 +13,50 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '../../components/AuthContext';
+import { useState, useEffect } from 'react';
+import { db } from '@/src/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function PortalProfile() {
   const { user, logout } = useAuth();
-  
-  const member = {
+  const [member, setMember] = useState({
     name: user?.displayName || 'Faith Member',
     email: user?.email || 'N/A',
-    phone: '', // These would normally come from a 'users' or 'members' doc
+    phone: '',
     address: '',
     memberSince: 'Member',
     gender: 'N/A',
     dob: 'N/A',
     categories: ['Member']
-  };
+  });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchMemberData = async () => {
+      try {
+        // Try to get user data from 'users' collection
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setMember({
+            name: userData.displayName || user.displayName,
+            email: userData.email || user.email,
+            phone: userData.phone || '',
+            address: userData.address || '',
+            memberSince: userData.memberSince || 'Member',
+            gender: userData.gender || 'N/A',
+            dob: userData.dob || 'N/A',
+            categories: userData.categories || ['Member']
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching member data:', error);
+      }
+    };
+
+    fetchMemberData();
+  }, [user]);
 
   const handleSignOut = () => {
     if (window.confirm("Confirm secure sign out?")) {

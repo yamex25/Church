@@ -30,6 +30,7 @@ export default function AssetInventory() {
   
   const [formData, setFormData] = useState({
     name: '',
+    assetId: '',
     category: '',
     department: '',
     condition: 'Good' as Asset['condition'],
@@ -39,6 +40,8 @@ export default function AssetInventory() {
     serialNumber: '',
     proofUrl: ''
   });
+
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,7 +123,7 @@ export default function AssetInventory() {
       }
       setShowForm(false);
       setEditingId(null);
-      setFormData({ name: '', category: '', department: '', condition: 'Good', location: '', value: 0, purchaseDate: new Date().toISOString().split('T')[0], serialNumber: '', proofUrl: '' });
+      setFormData({ name: '', assetId: '', category: '', department: '', condition: 'Good', location: '', value: 0, purchaseDate: new Date().toISOString().split('T')[0], serialNumber: '', proofUrl: '' });
     } catch (error) {
        handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'assets');
     }
@@ -139,6 +142,7 @@ export default function AssetInventory() {
     setEditingId(asset.id!);
     setFormData({
       name: asset.name,
+      assetId: asset.assetId || '',
       category: asset.category || '',
       department: (asset as any).department || '',
       condition: asset.condition,
@@ -163,6 +167,16 @@ export default function AssetInventory() {
           <p className="text-church-gray font-medium">Stewardship of physical resources and church equipment.</p>
         </div>
         <div className="flex gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-church-gray w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search assets by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-3 border-2 border-church-blue/10 rounded-2xl font-medium text-sm focus:outline-none focus:border-church-blue/30 transition-all"
+            />
+          </div>
           <button onClick={handleExport} className="flex items-center gap-2 border-2 border-church-blue/10 text-church-gray px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-soft transition-all">
             <Download className="w-4 h-4" /> Export Excel
           </button>
@@ -172,19 +186,20 @@ export default function AssetInventory() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-3 gap-4">
          {[
            { label: 'Total Assets', val: assets.length, icon: Package, color: 'blue' },
-           { label: 'Total Value', val: formatCurrency(assets.reduce((acc, curr) => acc + curr.value, 0)), icon: DollarSign, color: 'emerald' },
-           { label: 'Maintenance Needed', val: assets.filter(a => a.condition === 'Maintenance Needed').length, icon: AlertTriangle, color: 'rose' },
-           { label: 'Good Condition', val: assets.filter(a => a.condition === 'Good').length, icon: ShieldCheck, color: 'blue' },
+           { label: 'Total Value', val: formatCurrency(assets.reduce((acc, curr) => acc + curr.value, 0)), icon: DollarSign, color: 'yellow' },
+           { label: 'Condition', val: `${assets.filter(a => a.condition === 'Good').length} Good / ${assets.filter(a => a.condition === 'Fair').length} Fair / ${assets.filter(a => a.condition === 'Bad').length} Bad`, icon: ShieldCheck, color: 'blue' },
          ].map((s) => (
-           <div key={s.label} className="bg-white p-6 rounded-[32px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
-              <div className="flex items-center justify-between mb-4">
-                <s.icon className={cn("w-5 h-5", s.color === 'emerald' ? 'text-emerald-500' : (s.color === 'rose' ? 'text-rose-500' : 'text-church-blue'))} />
+           <div key={s.label} className={cn("p-4 rounded-[32px] border shadow-xl shadow-church-blue/5",
+             s.color === 'blue' ? "bg-church-blue text-white border-church-blue/20" : "bg-yellow-400 text-slate-900 border-yellow-400/20"
+           )}>
+              <div className="flex items-center justify-between mb-3">
+                <s.icon className={cn("w-4 h-4", s.color === 'yellow' ? 'text-church-blue' : 'text-white')} />
               </div>
-              <h3 className="text-2xl font-black">{s.val}</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-church-gray mt-1">{s.label}</p>
+              <h3 className={cn("text-lg font-black", s.color === 'blue' ? 'text-white' : 'text-slate-900')}>{s.val}</h3>
+              <p className={cn("text-[8px] font-black uppercase tracking-widest mt-1", s.color === 'blue' ? 'text-white/80' : 'text-slate-700')}>{s.label}</p>
            </div>
          ))}
       </div>
@@ -199,6 +214,10 @@ export default function AssetInventory() {
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Asset Name</label>
                   <input required className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Asset ID (Number Plate, etc.)</label>
+                  <input className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.assetId} onChange={e => setFormData({...formData, assetId: e.target.value})} placeholder="e.g., KAB 123X, SN001, etc." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -231,8 +250,7 @@ export default function AssetInventory() {
                     <select className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value as any})}>
                       <option value="Good">Good</option>
                       <option value="Fair">Fair</option>
-                      <option value="Maintenance Needed">Maintenance Needed</option>
-                      <option value="Retired">Retired</option>
+                      <option value="Bad">Bad</option>
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -292,12 +310,14 @@ export default function AssetInventory() {
       </AnimatePresence>
 
       <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-        {assets.map((asset) => (
+        {assets.filter(asset => 
+          searchTerm === '' || asset.name.toLowerCase().includes(searchTerm.toLowerCase())
+        ).map((asset) => (
           <div key={asset.id} className="bg-white rounded-[32px] p-8 border border-church-blue/5 shadow-xl hover:shadow-2xl transition-all relative overflow-hidden group">
             <div className="flex justify-between items-start mb-6">
                <div className={cn(
                  "p-4 rounded-2xl",
-                 asset.condition === 'Good' ? "bg-emerald-50 text-emerald-600" : (asset.condition === 'Maintenance Needed' ? "bg-rose-50 text-rose-600" : "bg-church-soft text-church-blue")
+                 asset.condition === 'Good' ? "bg-emerald-50 text-emerald-600" : (asset.condition === 'Fair' ? "bg-yellow-50 text-yellow-600" : "bg-rose-50 text-rose-600")
                )}>
                  <Package className="w-6 h-6" />
                </div>
@@ -307,6 +327,9 @@ export default function AssetInventory() {
                </div>
             </div>
             <h4 className="text-xl font-black text-church-black mb-1">{asset.name}</h4>
+            {asset.assetId && (
+              <p className="text-sm font-black text-church-blue mb-2">ID: {asset.assetId}</p>
+            )}
             <div className="flex flex-col gap-1 mb-4">
               <span className="text-[10px] font-black uppercase tracking-widest text-church-gray flex items-center gap-2">
                 <Package className="w-3 h-3 text-church-blue" /> {asset.category}

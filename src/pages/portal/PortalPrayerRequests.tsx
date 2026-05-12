@@ -29,7 +29,7 @@ export default function PortalPrayerRequests() {
 
     const q = query(
       collection(db, 'prayerRequests'),
-      where('memberId', '==', user.uid),
+      where('memberName', '==', user.displayName),
       orderBy('createdAt', 'desc')
     );
 
@@ -50,18 +50,24 @@ export default function PortalPrayerRequests() {
   }, [user]);
   
   const handleSubmit = async () => {
+    console.log('Submit button clicked');
+    
     if (!newRequest.trim()) {
       alert("Please enter your prayer request.");
       return;
     }
 
-    if (!user) return;
+    if (!user) {
+      alert("You must be logged in to submit a prayer request.");
+      return;
+    }
 
+    console.log('Submitting prayer request for:', user.displayName);
+    
     try {
       const requestData = {
-        memberId: user.uid,
-        memberName: user.displayName,
-        requestText: newRequest,
+        memberName: user.displayName || 'Anonymous',
+        requestText: newRequest.trim(),
         status: 'Pending',
         isPrivate: isPrivate,
         visibility: visibility,
@@ -70,15 +76,21 @@ export default function PortalPrayerRequests() {
         updatedAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, 'prayerRequests'), requestData);
+      console.log('Request data:', requestData);
       
+      const docRef = await addDoc(collection(db, 'prayerRequests'), requestData);
+      console.log('Prayer request submitted with ID:', docRef.id);
+      
+      // Reset form
       setNewRequest('');
       setIsPrivate(false);
       setVisibility('Public');
       setShowForm(false);
+      
       alert("Your spiritual intention has been shared with the selected intercessory layer.");
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'prayerRequests');
+      console.error('Error submitting prayer request:', error);
+      alert("There was an error submitting your prayer request. Please try again.");
     }
   };
 
@@ -121,7 +133,7 @@ export default function PortalPrayerRequests() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-white p-10 rounded-[48px] border-2 border-church-yellow shadow-2xl relative overflow-hidden"
           >
-            <div className="relative z-10">
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="relative z-10">
               <h3 className="font-display text-2xl font-black mb-6">How can we stand with you?</h3>
               <textarea 
                 rows={4}
@@ -129,6 +141,7 @@ export default function PortalPrayerRequests() {
                 onChange={(e) => setNewRequest(e.target.value)}
                 placeholder="Describe your prayer need..."
                 className="w-full bg-church-soft border-2 border-transparent rounded-3xl p-6 focus:outline-none focus:border-church-blue focus:bg-white text-base placeholder:text-church-gray transition-all mb-6 font-medium shadow-inner"
+                required
               />
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div>
@@ -176,19 +189,33 @@ export default function PortalPrayerRequests() {
               </div>
               <div className="flex gap-4">
                 <button 
+                  type="button"
                   onClick={() => setShowForm(false)}
                   className="flex-1 bg-church-soft text-church-black py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-blue/5 transition-all shadow-sm"
                 >
                   Withdraw
                 </button>
                 <button 
-                  onClick={handleSubmit}
+                  type="submit"
                   className="flex-1 bg-church-yellow text-church-black py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-church-yellow/20 hover:scale-[1.02] active:scale-95 transition-all"
                 >
                   Submit to Wall
                 </button>
               </div>
-            </div>
+              {/* Debug button - remove later */}
+              <button 
+                type="button"
+                onClick={() => {
+                  console.log('User:', user);
+                  console.log('DB available:', !!db);
+                  console.log('New request:', newRequest);
+                  alert(`Debug: User ${user?.displayName ? 'exists' : 'null'}, DB ${db ? 'exists' : 'null'}, Request length: ${newRequest.length}`);
+                }}
+                className="w-full mt-4 p-2 bg-red-100 text-red-600 rounded text-xs"
+              >
+                Debug Info
+              </button>
+            </form>
             <div className="absolute top-0 right-0 w-64 h-64 bg-church-yellow/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           </motion.div>
         )}

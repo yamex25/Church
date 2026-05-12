@@ -24,6 +24,7 @@ import MemberPortal from '@/src/pages/portal/MemberPortal';
 import PortalProfile from '@/src/pages/portal/PortalProfile';
 import PortalContributions from '@/src/pages/portal/PortalContributions';
 import PortalPrayerRequests from '@/src/pages/portal/PortalPrayerRequests';
+import PortalRequisitions from '@/src/pages/portal/PortalRequisitions';
 import PortalEvents from '@/src/pages/portal/PortalEvents';
 import PrivateRoute from '@/src/components/PrivateRoute';
 import AdminLayout from '@/src/components/AdminLayout';
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="profile" element={<PortalProfile />} />
             <Route path="contributions" element={<PortalContributions />} />
             <Route path="prayer-requests" element={<PortalPrayerRequests />} />
+            <Route path="requisitions" element={<PortalRequisitions />} />
             <Route path="events" element={<PortalEvents />} />
           </Route>
 

@@ -81,9 +81,15 @@ export interface Requisition {
   department: string;
   requestedBy: string;
   requesterId: string;
-  items: string;
-  estimatedCost: number;
-  purpose: string;
+  items?: string; // Old format
+  itemName?: string; // New format from member portal
+  estimatedCost?: number; // Old format
+  cost?: number; // New format
+  quantity?: number; // New format
+  total?: number; // New format - calculated
+  purpose?: string; // Old format
+  stockable?: boolean; // New format
+  requestDate?: string; // New format
   status: RequisitionStatus;
   approverId?: string;
   approverName?: string;
@@ -168,8 +174,9 @@ export interface Visitor {
 export interface Asset {
   id?: string;
   name: string;
+  assetId?: string; // For number plates, product IDs, etc.
   category: string;
-  condition: 'Good' | 'Fair' | 'Maintenance Needed' | 'Retired';
+  condition: 'Good' | 'Fair' | 'Bad';
   location: string;
   value: number;
   purchaseDate: string;

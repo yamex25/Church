@@ -13,14 +13,44 @@ import {
 import { Link } from 'react-router-dom';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useAuth } from '@/src/components/AuthContext';
+import { useState, useEffect } from 'react';
+import { db } from '@/src/lib/firebase';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 export default function MemberPortal() {
   const { user } = useAuth();
+  const [totalGiving, setTotalGiving] = useState(0);
   
-  // Get member details - in a real app, you'd fetch this from the 'members' collection
-  // for now we use the user's display name and a dummy ID
+  // Get member details
   const memberName = user?.displayName || 'Member';
   const memberId = user?.uid.slice(0, 8).toUpperCase() || 'GRACE-001';
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Fetch user's contribution total
+    const q = query(
+      collection(db, 'finance'),
+      where('memberName', '==', user.displayName),
+      orderBy('date', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data
+        };
+      });
+      const total = docs.reduce((sum, doc: any) => sum + (Number(doc.amount) || 0), 0);
+      setTotalGiving(total);
+    }, (error) => {
+      console.error("Error fetching contributions:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   return (
     <div className="space-y-8">
@@ -97,7 +127,7 @@ export default function MemberPortal() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
             <div className="relative z-10">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-2">Fellowship Contributions</p>
-              <h3 className="text-4xl font-display font-black text-church-yellow">{formatCurrency(0)}</h3>
+              <h3 className="text-4xl font-display font-black text-church-yellow">{formatCurrency(totalGiving)}</h3>
             </div>
             <Link to="/portal/contributions" className="relative z-10 mt-10">
               <button className="w-full bg-church-yellow text-church-black px-6 py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-[1.03] active:scale-95 transition-all shadow-xl shadow-church-yellow/20">

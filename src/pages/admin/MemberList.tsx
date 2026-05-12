@@ -17,8 +17,192 @@ import { cn, formatDate, calculateAge, downloadExcel } from '@/src/lib/utils';
 import { MembershipStatus, Member } from '@/src/types';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { useAuth } from '@/src/components/AuthContext';
+
+// Kampala location data structure
+const kampalaLocations = {
+  divisions: [
+    'Kampala Central',
+    'Rubaga',
+    'Kawempe',
+    'Nakawa',
+    'Makindye'
+  ],
+  parishes: {
+    'Kampala Central': [
+      'Kampala Town Parish',
+      'Nakasero Parish',
+      'Kololo Parish',
+      'Nakivubo Parish'
+    ],
+    'Rubaga': [
+      'Rubaga Parish',
+      'Lubaga Parish',
+      'Mengo Parish',
+      'Nabunya Parish'
+    ],
+    'Kawempe': [
+      'Kawempe Parish',
+      'Makerere Parish',
+      'Bwaise Parish',
+      'Kawala Parish',
+      'Kanyanya Parish',
+      'Nansana Parish'
+    ],
+    'Nakawa': [
+      'Nakawa Parish',
+      'Bugolobi Parish',
+      'Mbuya Parish',
+      'Ntinda Parish'
+    ],
+    'Makindye': [
+      'Makindye Parish',
+      'Kibuye Parish',
+      'Kabalagala Parish',
+      'Naguru Parish'
+    ]
+  },
+  villages: {
+    'Kampala Town Parish': [
+      'Central Market',
+      'Kampala Road',
+      'Parliament Avenue',
+      'Entebbe Road'
+    ],
+    'Nakasero Parish': [
+      'Nakasero Hill',
+      'Sheraton Road',
+      'Speke Road',
+      'Gaddafi Mosque'
+    ],
+    'Kololo Parish': [
+      'Kololo Hill',
+      'Independence Avenue',
+      'Kira Road',
+      'Prince Charles Drive'
+    ],
+    'Nakivubo Parish': [
+      'Nakivubo',
+      'Owino Market',
+      'Kampala Bus Park',
+      'Old Taxi Park'
+    ],
+    'Rubaga Parish': [
+      'Rubaga Hill',
+      'St. Mary\'s Cathedral',
+      'Kabaka\'s Palace',
+      'Bulange'
+    ],
+    'Lubaga Parish': [
+      'Lubaga Hill',
+      'St. Luke\'s',
+      'Lubaga Road',
+      'Kabaka\'s Lake'
+    ],
+    'Mengo Parish': [
+      'Mengo Hill',
+      'Bulange',
+      'Kabaka\'s Palace',
+      'Kabaka\'s Lake'
+    ],
+    'Nabunya Parish': [
+      'Nabunya',
+      'Lubiri',
+      'Kagga',
+      'Kasubi'
+    ],
+    'Kawempe Parish': [
+      'Kawempe',
+      'Kawempe Market',
+      'Kawempe Junction',
+      'Makerere Hill',
+      'Kikoni',
+      'Bwaise Junction'
+    ],
+    'Makerere Parish': [
+      'Makerere Hill',
+      'Makerere University',
+      'Makerere Kikoni',
+      'Makerere West',
+      'Makerere East',
+      'Wandegeya',
+      'Bikya',
+      'Katanga',
+      'Kikoni',
+      'Taka'
+    ],
+    'Bwaise Parish': [
+      'Bwaise',
+      'Bwaise I',
+      'Bwaise II',
+      'Bwaise III'
+    ],
+    'Kawala Parish': [
+      'Kawala',
+      'Kawala Market',
+      'Kawala Trading Center',
+      'Kawala Junction'
+    ],
+    'Kanyanya Parish': [
+      'Kanyanya',
+      'Kanyanya Market',
+      'Kanyanya Trading Center',
+      'Kanyanya Junction'
+    ],
+    'Nakawa Parish': [
+      'Nakawa',
+      'Nakawa Market',
+      'Nakawa Trading Center',
+      'Nakawa Junction'
+    ],
+    'Bugolobi Parish': [
+      'Bugolobi',
+      'Bugolobi Flats',
+      'Bugolobi Market',
+      'Bugolobi Trading Center'
+    ],
+    'Mbuya Parish': [
+      'Mbuya',
+      'Mbuya Market',
+      'Mbuya Trading Center',
+      'Mbuya Junction'
+    ],
+    'Ntinda Parish': [
+      'Ntinda',
+      'Ntinda Market',
+      'Ntinda Trading Center',
+      'Ntinda Junction'
+    ],
+    'Makindye Parish': [
+      'Makindye',
+      'Makindye Market',
+      'Makindye Trading Center',
+      'Makindye Junction'
+    ],
+    'Kibuye Parish': [
+      'Kibuye',
+      'Kibuye Market',
+      'Kibuye Trading Center',
+      'Kibuye Junction'
+    ],
+    'Kabalagala Parish': [
+      'Kabalagala',
+      'Kabalagala Market',
+      'Kabalagala Trading Center',
+      'Kabalagala Junction'
+    ],
+    'Naguru Parish': [
+      'Naguru',
+      'Naguru Market',
+      'Naguru Trading Center',
+      'Naguru Junction'
+    ]
+  }
+};
+
 
 export default function MemberList() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMinistry, setFilterMinistry] = useState('All');
   const [members, setMembers] = useState<Member[]>([]);
@@ -26,6 +210,15 @@ export default function MemberList() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+    const [showAddDivision, setShowAddDivision] = useState(false);
+  const [showAddParish, setShowAddParish] = useState(false);
+  const [showAddVillage, setShowAddVillage] = useState(false);
+  const [newDivision, setNewDivision] = useState('');
+  const [newParish, setNewParish] = useState('');
+  const [newVillage, setNewVillage] = useState('');
+  const [memberNameInput, setMemberNameInput] = useState('');
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateMembers, setDuplicateMembers] = useState<Member[]>([]);
   
   // Member form state
   const initialMemberState = {
@@ -48,20 +241,26 @@ export default function MemberList() {
   const [newMember, setNewMember] = useState(initialMemberState);
 
   useEffect(() => {
+    console.log('Members useEffect running, user:', user);
     const q = query(collection(db, 'members'), orderBy('createdAt', 'desc'));
+    console.log('Members query created:', q);
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('Members snapshot received:', snapshot);
+      console.log('Snapshot docs length:', snapshot.docs.length);
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Member[];
+      console.log('Mapped members docs:', docs);
       setMembers(docs);
       setLoading(false);
     }, (error) => {
+      console.error('Members query error:', error);
       handleFirestoreError(error, OperationType.LIST, 'members');
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const qDepts = query(collection(db, 'departments'), orderBy('name', 'asc'));
@@ -89,14 +288,15 @@ export default function MemberList() {
 
     try {
       if (editingMember) {
-        const docRef = doc(db, 'members', editingMember.id);
-        await updateDoc(docRef, {
+        await updateDoc(doc(db, 'members', editingMember.id), {
           ...newMember,
           updatedAt: serverTimestamp(),
-          categories: [newMember.category]
+          updatedBy: user.displayName || user.email || 'Admin'
         });
-        alert("Member stewardship record updated.");
+        setEditingMember(null);
+        alert("Member updated successfully!");
       } else {
+        // Create new member
         await addDoc(collection(db, 'members'), {
           ...newMember,
           createdAt: serverTimestamp(),
@@ -105,11 +305,32 @@ export default function MemberList() {
         });
         alert("New member registered successfully in GraceFlow.");
       }
+      
       setShowAddForm(false);
-      setEditingMember(null);
       setNewMember(initialMemberState);
+      setMemberNameInput('');
+      setShowDuplicateWarning(false);
+      setDuplicateMembers([]);
     } catch (error) {
       handleFirestoreError(error, editingMember ? OperationType.UPDATE : OperationType.CREATE, 'members');
+    }
+  };
+
+  const handleMemberNameChange = (value: string) => {
+    setMemberNameInput(value);
+    setNewMember({...newMember, name: value});
+    
+    if (value.trim()) {
+      // Check for potential duplicates
+      const duplicates = members.filter(member => 
+        member.name.toLowerCase().includes(value.toLowerCase()) ||
+        value.toLowerCase().includes(member.name.toLowerCase())
+      );
+      setDuplicateMembers(duplicates);
+      setShowDuplicateWarning(duplicates.length > 0);
+    } else {
+      setDuplicateMembers([]);
+      setShowDuplicateWarning(false);
     }
   };
 
@@ -127,6 +348,7 @@ export default function MemberList() {
       tribe: member.tribe || '',
       residence: member.residence || { division: '', parish: '', village: '' }
     });
+    setMemberNameInput(member.name);
     setShowAddForm(true);
   };
 
@@ -189,15 +411,33 @@ export default function MemberList() {
 
               <form onSubmit={handleCreateMember} className="space-y-6 max-h-[60vh] overflow-y-auto px-4 custom-scrollbar">
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
+                  <div className="space-y-2 relative">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Full Legal Name</label>
                     <input 
                       required
                       type="text" 
                       className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-sm font-bold"
-                      value={newMember.name}
-                      onChange={(e) => setNewMember({...newMember, name: e.target.value})}
+                      value={memberNameInput}
+                      onChange={(e) => handleMemberNameChange(e.target.value)}
+                      placeholder="Start typing member name..."
                     />
+                    {showDuplicateWarning && duplicateMembers.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-red-200 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto">
+                        <div className="p-3 bg-red-50 border-b border-red-200">
+                          <div className="text-xs font-bold text-red-600">⚠️ Potential duplicates found</div>
+                          <div className="text-xs text-red-500 mt-1">These members already exist in the database</div>
+                        </div>
+                        {duplicateMembers.map(member => (
+                          <div key={member.id} className="px-4 py-3 border-b border-church-soft last:border-b-0">
+                            <div className="font-bold text-sm text-church-black">{member.name}</div>
+                            <div className="text-xs text-church-gray">
+                              {member.email && `Email: ${member.email}`}
+                              {member.phone && ` • Phone: ${member.phone}`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Email Identity</label>
@@ -222,8 +462,8 @@ export default function MemberList() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Tribe / Ancestry</label>
                     <input 
-                      type="text" 
-                      placeholder="e.g. Muganda, Musoga..."
+                      type="text"
+                      placeholder="Enter tribe..."
                       className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-sm font-bold"
                       value={newMember.tribe}
                       onChange={(e) => setNewMember({...newMember, tribe: e.target.value})}
@@ -295,30 +535,89 @@ export default function MemberList() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="text-[9px] font-bold uppercase tracking-widest text-church-gray ml-2">Division</label>
-                      <input 
-                        type="text" 
+                      <select 
                         className="w-full px-4 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-xs font-bold"
                         value={newMember.residence.division}
-                        onChange={(e) => setNewMember({...newMember, residence: {...newMember.residence, division: e.target.value}})}
-                      />
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__ADD_NEW__') {
+                            setShowAddDivision(true);
+                          } else {
+                            setNewMember({
+                              ...newMember, 
+                              residence: {
+                                ...newMember.residence,
+                                division: value,
+                                parish: '',
+                                village: ''
+                              }
+                            });
+                          }
+                        }}
+                      >
+                        <option value="">Select Division</option>
+                        {kampalaLocations.divisions.map(division => (
+                          <option key={division} value={division}>{division}</option>
+                        ))}
+                        <option value="__ADD_NEW__">+ Add New</option>
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[9px] font-bold uppercase tracking-widest text-church-gray ml-2">Parish</label>
-                      <input 
-                        type="text" 
+                      <select 
                         className="w-full px-4 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-xs font-bold"
                         value={newMember.residence.parish}
-                        onChange={(e) => setNewMember({...newMember, residence: {...newMember.residence, parish: e.target.value}})}
-                      />
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__ADD_NEW__') {
+                            setShowAddParish(true);
+                          } else {
+                            setNewMember({
+                              ...newMember, 
+                              residence: {
+                                ...newMember.residence,
+                                parish: value,
+                                village: ''
+                              }
+                            });
+                          }
+                        }}
+                        disabled={!newMember.residence.division}
+                      >
+                        <option value="">Select Parish</option>
+                        {newMember.residence.division && kampalaLocations.parishes[newMember.residence.division]?.map(parish => (
+                          <option key={parish} value={parish}>{parish}</option>
+                        ))}
+                        {newMember.residence.division && <option value="__ADD_NEW__">+ Add New</option>}
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[9px] font-bold uppercase tracking-widest text-church-gray ml-2">Village</label>
-                      <input 
-                        type="text" 
+                      <select 
                         className="w-full px-4 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-xs font-bold"
                         value={newMember.residence.village}
-                        onChange={(e) => setNewMember({...newMember, residence: {...newMember.residence, village: e.target.value}})}
-                      />
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__ADD_NEW__') {
+                            setShowAddVillage(true);
+                          } else {
+                            setNewMember({
+                              ...newMember, 
+                              residence: {
+                                ...newMember.residence,
+                                village: value
+                              }
+                            });
+                          }
+                        }}
+                        disabled={!newMember.residence.parish}
+                      >
+                        <option value="">Select Village</option>
+                        {newMember.residence.parish && kampalaLocations.villages[newMember.residence.parish]?.map(village => (
+                          <option key={village} value={village}>{village}</option>
+                        ))}
+                        {newMember.residence.parish && <option value="__ADD_NEW__">+ Add New</option>}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -389,7 +688,7 @@ export default function MemberList() {
             </thead>
             <tbody className="divide-y divide-church-soft">
               {members.filter(m => {
-                const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                const matchesSearch = m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   m.tribe?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   m.residence?.village?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   m.residence?.division?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -474,6 +773,150 @@ export default function MemberList() {
           </div>
         </div>
       </div>
+
+      
+      {/* Add Division Modal */}
+      <AnimatePresence>
+        {showAddDivision && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+          >
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+              <h3 className="text-2xl font-display font-black mb-6">Add New Division</h3>
+              <input 
+                type="text"
+                placeholder="Enter division name..."
+                className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-lg font-bold mb-6"
+                value={newDivision}
+                onChange={(e) => setNewDivision(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setShowAddDivision(false);
+                    setNewDivision('');
+                  }}
+                  className="flex-1 bg-church-soft text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-blue/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (newDivision.trim()) {
+                      kampalaLocations.divisions.push(newDivision.trim());
+                      kampalaLocations.parishes[newDivision.trim()] = [];
+                      setNewMember({...newMember, residence: {...newMember.residence, division: newDivision.trim(), parish: '', village: ''}});
+                      setShowAddDivision(false);
+                      setNewDivision('');
+                    }
+                  }}
+                  className="flex-1 bg-church-yellow text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-church-yellow/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Add Division
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Parish Modal */}
+      <AnimatePresence>
+        {showAddParish && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+          >
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+              <h3 className="text-2xl font-display font-black mb-6">Add New Parish</h3>
+              <input 
+                type="text"
+                placeholder="Enter parish name..."
+                className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-lg font-bold mb-6"
+                value={newParish}
+                onChange={(e) => setNewParish(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setShowAddParish(false);
+                    setNewParish('');
+                  }}
+                  className="flex-1 bg-church-soft text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-blue/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (newParish.trim() && newMember.residence.division) {
+                      kampalaLocations.parishes[newMember.residence.division].push(newParish.trim());
+                      kampalaLocations.villages[newParish.trim()] = [];
+                      setNewMember({...newMember, residence: {...newMember.residence, parish: newParish.trim(), village: ''}});
+                      setShowAddParish(false);
+                      setNewParish('');
+                    }
+                  }}
+                  className="flex-1 bg-church-yellow text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-church-yellow/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Add Parish
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Village Modal */}
+      <AnimatePresence>
+        {showAddVillage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+          >
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+              <h3 className="text-2xl font-display font-black mb-6">Add New Village</h3>
+              <input 
+                type="text"
+                placeholder="Enter village name..."
+                className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-lg font-bold mb-6"
+                value={newVillage}
+                onChange={(e) => setNewVillage(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setShowAddVillage(false);
+                    setNewVillage('');
+                  }}
+                  className="flex-1 bg-church-soft text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-blue/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (newVillage.trim() && newMember.residence.parish) {
+                      kampalaLocations.villages[newMember.residence.parish].push(newVillage.trim());
+                      setNewMember({...newMember, residence: {...newMember.residence, village: newVillage.trim()}});
+                      setShowAddVillage(false);
+                      setNewVillage('');
+                    }
+                  }}
+                  className="flex-1 bg-church-yellow text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-church-yellow/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Add Village
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

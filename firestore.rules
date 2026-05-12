@@ -51,6 +51,8 @@ service cloud.firestore {
     // --- Prayer Requests ---
     match /prayerRequests/{requestId} {
       allow read, write: if isSignedIn();
+      allow create: if isSignedIn() && request.auth != null;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // --- Requisitions ---
@@ -98,6 +100,11 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // --- Requisitions ---
+    match /requisitions/{reqId} {
+      allow read, write: if isSignedIn();
+    }
+
     // --- Admins (Role verification) ---
     match /admins/{adminId} {
       allow read: if isSignedIn();
@@ -106,6 +113,11 @@ service cloud.firestore {
     // --- Departments ---
     match /departments/{deptId} {
       allow read, write: if isSignedIn();
+    }
+    
+    // Testing collection
+    match /test/connection {
+      allow read: if true;
     }
   }
 }

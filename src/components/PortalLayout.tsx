@@ -8,7 +8,8 @@ import {
   CalendarDays,
   LogOut,
   Bell,
-  Church
+  Church,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from './AuthContext';
@@ -18,6 +19,7 @@ const navItems = [
   { icon: User, label: 'Profile', path: '/portal/profile' },
   { icon: History, label: 'Contributions', path: '/portal/contributions' },
   { icon: Heart, label: 'Prayer', path: '/portal/prayer-requests' },
+  { icon: FileText, label: 'Requisitions', path: '/portal/requisitions' },
   { icon: CalendarDays, label: 'Events', path: '/portal/events' },
   { icon: Church, label: 'Admin Panel', path: '/admin' }, // Added for vetting
 ];
@@ -25,9 +27,6 @@ const navItems = [
 export default function PortalLayout() {
   const location = useLocation();
   const { logout } = useAuth();
-
-  // During vetting phase, redirect all portal traffic to the unified admin dashboard
-  return <Navigate to="/admin" replace />;
 
   const handleNotificationClick = () => {
     alert("You have no new notifications.");

@@ -14,7 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/src/components/AuthContext';
 import { Requisition, RequisitionStatus, UserRole, Employee } from '@/src/types';
 import { cn, formatCurrency, formatDate } from '@/src/lib/utils';
@@ -122,6 +122,9 @@ export default function Requisitions() {
 
     try {
       const docRef = doc(db, 'requisitions', id);
+      const requisition = requisitions.find(r => r.id === id);
+      
+      // Update requisition status
       await updateDoc(docRef, {
         status,
         approverId: user.uid,
@@ -129,7 +132,49 @@ export default function Requisitions() {
         notes,
         updatedAt: serverTimestamp()
       });
-      alert(`Requisition status updated to ${status}.`);
+
+      // If approved, handle finance and stockable items
+      if (status === RequisitionStatus.APPROVED && requisition) {
+        // Update finance budget (reduce by total amount)
+        if (requisition.total) {
+          try {
+            const financeQuery = query(collection(db, 'finance'), orderBy('createdAt', 'desc'));
+            const financeSnapshot = await getDocs(financeQuery);
+            if (!financeSnapshot.empty) {
+              const latestFinance = financeSnapshot.docs[0].data();
+              const newBalance = (latestBalance.balance || 0) - requisition.total;
+              
+              await updateDoc(doc(db, 'finance', financeSnapshot.docs[0].id), {
+                balance: newBalance,
+                updatedAt: serverTimestamp()
+              });
+            }
+          } catch (financeError) {
+            console.error('Error updating finance:', financeError);
+          }
+        }
+
+        // If stockable item, add to assets
+        if (requisition.stockable) {
+          try {
+            await addDoc(collection(db, 'assets'), {
+              name: requisition.itemName || requisition.items,
+              category: 'Requisition Item',
+              department: requisition.department,
+              value: requisition.total || requisition.estimatedCost,
+              location: 'Storage',
+              condition: 'Good',
+              purchaseDate: new Date().toISOString().split('T')[0],
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+          } catch (assetError) {
+            console.error('Error adding asset:', assetError);
+          }
+        }
+      }
+      
+      alert(`Requisition ${status.toLowerCase()} successfully.`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'requisitions');
     }
@@ -139,7 +184,8 @@ export default function Requisitions() {
 
   const filtered = requisitions.filter(r => 
     r.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.items.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.items && r.items.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (r.itemName && r.itemName.toLowerCase().includes(searchTerm.toLowerCase())) ||
     r.requestedBy.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -278,8 +324,18 @@ export default function Requisitions() {
                 </div>
                 
                 <div>
-                  <h3 className="text-2xl font-display font-black tracking-tight text-church-black mb-1 italic">"{req.items}"</h3>
-                  <p className="text-sm font-medium text-church-gray">{req.purpose}</p>
+                  <h3 className="text-2xl font-display font-black tracking-tight text-church-black mb-1 italic">
+                    "{req.itemName || req.items}"
+                  </h3>
+                  <p className="text-sm font-medium text-church-gray">{req.purpose || 'Department requisition'}</p>
+                  {req.quantity && (
+                    <p className="text-sm text-church-gray mt-1">Quantity: {req.quantity}</p>
+                  )}
+                  {req.stockable && (
+                    <span className="inline-block mt-2 text-xs font-bold text-church-blue bg-church-blue/5 px-3 py-1 rounded-full">
+                      Stockable Item
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
@@ -289,7 +345,7 @@ export default function Requisitions() {
                   </div>
                   <div className="flex items-center gap-2 font-display text-base text-church-black normal-case">
                     <Package className="w-4 h-4 text-church-blue" />
-                    {formatCurrency(req.estimatedCost)}
+                    {formatCurrency(req.total || req.estimatedCost)}
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5" />

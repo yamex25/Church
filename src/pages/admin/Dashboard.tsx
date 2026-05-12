@@ -11,7 +11,10 @@ import {
   FileText,
   UserCheck,
   Activity,
-  ArrowUpRight
+  ArrowUpRight,
+  BarChart3,
+  Building,
+  Truck
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { cn, formatCurrency } from '@/src/lib/utils';
@@ -124,10 +127,10 @@ export default function Dashboard() {
   }, []);
 
   const topStats = [
-    { label: 'New Converts', value: convertsCount.toString(), sub: `Joined in ${new Date().getFullYear()}`, icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Total Finance', value: formatCurrency(totalFinance), sub: 'Church Collections', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Asset Value', value: formatCurrency(assetValue), sub: 'Total Property', icon: Package, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Staffing', value: employeeCount.toString(), sub: 'Active Employees', icon: Activity, color: 'text-rose-600', bg: 'bg-rose-50' },
+    { label: 'New Converts', value: convertsCount.toString(), sub: `Joined in ${new Date().getFullYear()}`, icon: UserCheck, color: 'text-church-blue', bg: 'bg-church-blue/10' },
+    { label: 'Total Finance', value: formatCurrency(totalFinance), sub: 'Church Collections', icon: DollarSign, color: 'text-church-blue', bg: 'bg-church-blue/10' },
+    { label: 'Asset Value', value: formatCurrency(assetValue), sub: 'Total Property', icon: Package, color: 'text-church-blue', bg: 'bg-church-blue/10' },
+    { label: 'Staffing', value: employeeCount.toString(), sub: 'Active Employees', icon: Activity, color: 'text-church-blue', bg: 'bg-church-blue/10' },
   ];
 
   return (
@@ -149,22 +152,33 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {topStats.map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all"
+            transition={{ delay: i * 0.1 }}
+            className={cn("p-6 rounded-2xl border shadow-lg hover:shadow-xl transition-all",
+              i % 2 === 0 ? "bg-church-blue text-white border-church-blue/20 hover:border-church-blue/40" : "bg-yellow-400 text-slate-900 border-yellow-400/20 hover:border-yellow-400/40"
+            )}
           >
-            <div className="flex items-center gap-4">
-              <div className={cn("p-3 rounded-xl", stat.bg)}>
-                <stat.icon className={cn("w-5 h-5", stat.color)} />
+            <div className="flex flex-col items-center">
+              <div className={cn("p-4 rounded-xl flex items-center justify-center mb-4", 
+                i % 2 === 0 ? "bg-white/20" : "bg-white/30"
+              )}>
+                <stat.icon className={cn("w-6 h-6", i % 2 === 0 ? "text-white" : "text-church-blue")} />
               </div>
-              <div>
-                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">{stat.label}</p>
-                <h3 className="text-xl font-bold text-slate-900">{stat.value}</h3>
+              <div className="text-left w-full">
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", 
+                  i % 2 === 0 ? "text-white/80" : "text-slate-700"
+                )}>{stat.label}</p>
+                <h3 className={cn("text-xl font-bold", 
+                  i % 2 === 0 ? "text-white" : "text-slate-900"
+                )}>{stat.value}</h3>
+                <p className={cn("text-sm", 
+                  i % 2 === 0 ? "text-white/70" : "text-slate-700"
+                )}>{stat.sub}</p>
               </div>
             </div>
           </motion.div>
@@ -174,34 +188,37 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-12 gap-8">
         {/* Left Column: Recent Activity */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-8 border border-church-blue/10 shadow-lg">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Recent Activity</h3>
-                <p className="text-xs font-medium text-slate-500">Latest administrative and prayer records.</p>
+                <h3 className="text-xl font-bold text-slate-900">Recent Activity</h3>
+                <p className="text-sm font-medium text-church-blue/60">Latest administrative and prayer records</p>
               </div>
-              <Link to="/admin/prayers" className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline">
-                View All <ChevronRight className="w-3 h-3" />
+              <Link to="/admin/prayers" className="text-sm font-bold text-church-blue flex items-center gap-1 hover:underline">
+                View All <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
             
-            <div className="divide-y divide-slate-100">
+            <div className="space-y-4">
               {recentRequests.map((activity, i) => (
-                <div key={i} className="py-4 flex items-center gap-4 group">
-                  <div className="w-10 h-10 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs shadow-sm">
-                    {activity.initials}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-baseline">
-                      <h4 className="font-bold text-slate-900 text-sm">{activity.name}</h4>
+                <div key={i} className="bg-church-blue/5 rounded-xl p-4 border border-church-blue/10 hover:border-church-blue/20 transition-all">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-church-blue rounded-xl flex items-center justify-center text-white font-bold shadow-md">
+                      <span className="text-lg">{activity.initials}</span>
                     </div>
-                    <p className="text-xs font-medium text-slate-500 line-clamp-1">{activity.action}</p>
+                    <div className="flex-1 text-left">
+                      <h4 className="font-bold text-slate-900 text-base mb-1">{activity.name}</h4>
+                      <p className="text-sm font-medium text-slate-600 leading-relaxed">{activity.action}</p>
+                    </div>
                   </div>
                 </div>
               ))}
               {recentRequests.length === 0 && (
-                <div className="text-center py-10 opacity-50">
-                  <p className="text-xs font-medium text-slate-500">No recent activity detected.</p>
+                <div className="text-center py-12">
+                  <div className="bg-church-blue/10 rounded-xl p-6 border border-church-blue/20">
+                    <FileText className="w-8 h-8 text-church-blue mx-auto mb-2" />
+                    <p className="text-sm font-medium text-slate-600">No recent activity detected</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -209,26 +226,38 @@ export default function Dashboard() {
 
           {/* Quick Shortcuts */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link to="/admin/requisitions" className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-all group">
-              <div className="bg-rose-50 w-10 h-10 rounded-xl flex items-center justify-center text-rose-600 mb-4">
-                <FileText className="w-5 h-5" />
+            <Link to="/admin/requisitions" className="bg-church-blue p-6 rounded-2xl border border-church-blue/20 shadow-lg hover:shadow-xl hover:border-church-blue/40 transition-all group">
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm mb-1">Requisitions</h4>
+                  <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest">{pendingReqs} To Approve</p>
+                </div>
               </div>
-              <h4 className="font-bold text-slate-900 text-sm mb-1">Requisitions</h4>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{pendingReqs} To Approve</p>
             </Link>
-            <Link to="/admin/prayers" className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-all group">
-              <div className="bg-indigo-50 w-10 h-10 rounded-xl flex items-center justify-center text-indigo-600 mb-4">
-                <Heart className="w-5 h-5" />
+            <Link to="/admin/prayers" className="bg-yellow-400 p-6 rounded-2xl border border-yellow-400/20 shadow-lg hover:shadow-xl hover:border-yellow-400/40 transition-all group">
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-white/30 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                  <Heart className="w-6 h-6 text-church-blue" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Prayers</h4>
+                  <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">{prayerCount} Pending</p>
+                </div>
               </div>
-              <h4 className="font-bold text-slate-900 text-sm mb-1">Prayers</h4>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{prayerCount} Pending</p>
             </Link>
-            <Link to="/admin/members" className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-all group">
-              <div className="bg-emerald-50 w-10 h-10 rounded-xl flex items-center justify-center text-emerald-600 mb-4">
-                <Users className="w-5 h-5" />
+            <Link to="/admin/members" className="bg-church-blue p-6 rounded-2xl border border-church-blue/20 shadow-lg hover:shadow-xl hover:border-church-blue/40 transition-all group">
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm mb-1">Member List</h4>
+                  <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest">{memberCount} Total</p>
+                </div>
               </div>
-              <h4 className="font-bold text-slate-900 text-sm mb-1">Member List</h4>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{memberCount} Total</p>
             </Link>
           </div>
         </div>

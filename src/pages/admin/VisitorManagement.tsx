@@ -23,6 +23,187 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, update
 import { Visitor } from '@/src/types';
 import { cn, formatDate, downloadExcel } from '@/src/lib/utils';
 
+// Kampala location data structure
+const kampalaLocations = {
+  divisions: [
+    'Kampala Central',
+    'Rubaga',
+    'Kawempe',
+    'Nakawa',
+    'Makindye'
+  ],
+  parishes: {
+    'Kampala Central': [
+      'Kampala Town Parish',
+      'Nakasero Parish',
+      'Kololo Parish',
+      'Nakivubo Parish'
+    ],
+    'Rubaga': [
+      'Rubaga Parish',
+      'Lubaga Parish',
+      'Mengo Parish',
+      'Nabunya Parish'
+    ],
+    'Kawempe': [
+      'Kawempe Parish',
+      'Makerere Parish',
+      'Bwaise Parish',
+      'Kawala Parish',
+      'Kanyanya Parish',
+      'Nansana Parish'
+    ],
+    'Nakawa': [
+      'Nakawa Parish',
+      'Bugolobi Parish',
+      'Mbuya Parish',
+      'Ntinda Parish'
+    ],
+    'Makindye': [
+      'Makindye Parish',
+      'Kibuye Parish',
+      'Kabalagala Parish',
+      'Naguru Parish'
+    ]
+  },
+  villages: {
+    'Kampala Town Parish': [
+      'Central Market',
+      'Kampala Road',
+      'Parliament Avenue',
+      'Entebbe Road'
+    ],
+    'Nakasero Parish': [
+      'Nakasero Hill',
+      'Sheraton Road',
+      'Speke Road',
+      'Gaddafi Mosque'
+    ],
+    'Kololo Parish': [
+      'Kololo Hill',
+      'Independence Avenue',
+      'Kira Road',
+      'Prince Charles Drive'
+    ],
+    'Nakivubo Parish': [
+      'Nakivubo',
+      'Owino Market',
+      'Kampala Bus Park',
+      'Old Taxi Park'
+    ],
+    'Rubaga Parish': [
+      'Rubaga Hill',
+      'St. Mary\'s Cathedral',
+      'Kabaka\'s Palace',
+      'Bulange'
+    ],
+    'Lubaga Parish': [
+      'Lubaga Hill',
+      'St. Luke\'s',
+      'Lubaga Road',
+      'Kabaka\'s Lake'
+    ],
+    'Mengo Parish': [
+      'Mengo Hill',
+      'Bulange',
+      'Kabaka\'s Palace',
+      'Kabaka\'s Lake'
+    ],
+    'Nabunya Parish': [
+      'Nabunya',
+      'Lubiri',
+      'Kagga',
+      'Kasubi'
+    ],
+    'Kawempe Parish': [
+      'Kawempe',
+      'Kawempe Market',
+      'Kawempe Junction',
+      'Makerere Hill',
+      'Kikoni',
+      'Bwaise Junction'
+    ],
+    'Makerere Parish': [
+      'Makerere Hill',
+      'Makerere University',
+      'Makerere Kikoni',
+      'Makerere West',
+      'Makerere East',
+      'Wandegeya',
+      'Bikya',
+      'Katanga',
+      'Kikoni',
+      'Taka'
+    ],
+    'Bwaise Parish': [
+      'Bwaise',
+      'Bwaise I',
+      'Bwaise II',
+      'Bwaise III'
+    ],
+    'Kawala Parish': [
+      'Kawala',
+      'Kawala Market',
+      'Kawala Trading Center',
+      'Kawala Junction'
+    ],
+    'Kanyanya Parish': [
+      'Kanyanya',
+      'Kanyanya Market',
+      'Kanyanya Trading Center',
+      'Kanyanya Junction'
+    ],
+    'Nakawa Parish': [
+      'Nakawa',
+      'Nakawa Market',
+      'Nakawa Trading Center',
+      'Nakawa Junction'
+    ],
+    'Bugolobi Parish': [
+      'Bugolobi',
+      'Bugolobi Flats',
+      'Bugolobi Market',
+      'Bugolobi Trading Center'
+    ],
+    'Mbuya Parish': [
+      'Mbuya',
+      'Mbuya Market',
+      'Mbuya Trading Center',
+      'Mbuya Junction'
+    ],
+    'Ntinda Parish': [
+      'Ntinda',
+      'Ntinda Market',
+      'Ntinda Trading Center',
+      'Ntinda Junction'
+    ],
+    'Makindye Parish': [
+      'Makindye',
+      'Makindye Market',
+      'Makindye Trading Center',
+      'Makindye Junction'
+    ],
+    'Kibuye Parish': [
+      'Kibuye',
+      'Kibuye Market',
+      'Kibuye Trading Center',
+      'Kibuye Junction'
+    ],
+    'Kabalagala Parish': [
+      'Kabalagala',
+      'Kabalagala Market',
+      'Kabalagala Trading Center',
+      'Kabalagala Junction'
+    ],
+    'Naguru Parish': [
+      'Naguru',
+      'Naguru Market',
+      'Naguru Trading Center',
+      'Naguru Junction'
+    ]
+  }
+};
+
 export default function VisitorManagement() {
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +212,17 @@ export default function VisitorManagement() {
   const [editingVisitor, setEditingVisitor] = useState<Visitor | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-indexed
+  const [showAddDivision, setShowAddDivision] = useState(false);
+  const [showAddParish, setShowAddParish] = useState(false);
+  const [showAddVillage, setShowAddVillage] = useState(false);
+  const [newDivision, setNewDivision] = useState('');
+  const [newParish, setNewParish] = useState('');
+  const [newVillage, setNewVillage] = useState('');
+  const [members, setMembers] = useState<{id: string, name: string}[]>([]);
+  const [invitedByInput, setInvitedByInput] = useState('');
+  const [showInvitedBySuggestions, setShowInvitedBySuggestions] = useState(false);
+  const [filteredInvitedByMembers, setFilteredInvitedByMembers] = useState<{id: string, name: string}[]>([]);
+  const [selectedInvitedByMember, setSelectedInvitedByMember] = useState<{id: string, name: string} | null>(null);
 
   const initialVisitorState = {
     name: '',
@@ -98,6 +290,53 @@ export default function VisitorManagement() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const qMembers = query(collection(db, 'members'), orderBy('name', 'asc'));
+    const unsubscribeMembers = onSnapshot(qMembers, (snapshot) => {
+      const memberDocs = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+      setMembers(memberDocs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'members');
+    });
+
+    return () => unsubscribeMembers();
+  }, []);
+
+  const handleInvitedByChange = (value: string) => {
+    setInvitedByInput(value);
+    setSelectedInvitedByMember(null);
+    
+    if (value.trim()) {
+      // Filter members based on input
+      const filtered = members.filter(member => 
+        member.name.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredInvitedByMembers(filtered);
+      setShowInvitedBySuggestions(true);
+      
+      // Check if exact match exists
+      const exactMatch = members.find(m => m.name.toLowerCase() === value.toLowerCase().trim());
+      if (exactMatch) {
+        setSelectedInvitedByMember(exactMatch);
+        setNewVisitor({...newVisitor, invitedBy: exactMatch.name});
+      } else {
+        setNewVisitor({...newVisitor, invitedBy: value.trim()});
+      }
+    } else {
+      setFilteredInvitedByMembers([]);
+      setShowInvitedBySuggestions(false);
+      setNewVisitor({...newVisitor, invitedBy: ''});
+    }
+  };
+
+  const selectInvitedByMember = (member: {id: string, name: string}) => {
+    setSelectedInvitedByMember(member);
+    setInvitedByInput(member.name);
+    setNewVisitor({...newVisitor, invitedBy: member.name});
+    setShowInvitedBySuggestions(false);
+    setFilteredInvitedByMembers([]);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,36 +521,36 @@ export default function VisitorManagement() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm"
+            className="bg-church-blue p-6 rounded-3xl border border-church-blue/20 shadow-lg hover:shadow-xl transition-all text-white"
           >
             <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 bg-blue-50 rounded-2xl">
-                <Calendar className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-white/20 rounded-2xl">
+                <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Global Intake</p>
-                <h3 className="text-2xl font-black text-slate-900">{stats.weekly}</h3>
+                <p className="text-xs font-bold text-white/80 uppercase tracking-widest">Global Intake</p>
+                <h3 className="text-2xl font-black text-white">{stats.weekly}</h3>
               </div>
             </div>
-            <p className="text-[10px] font-bold text-blue-600 py-1 px-2 bg-blue-50 rounded-full inline-block">Rolling 7 Days</p>
+            <p className="text-[10px] font-bold text-white/70 py-1 px-2 bg-white/10 rounded-full inline-block">Rolling 7 Days</p>
           </motion.div>
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm"
+            className="bg-church-blue p-6 rounded-3xl border border-church-blue/20 shadow-lg hover:shadow-xl transition-all text-white"
           >
             <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 bg-indigo-50 rounded-2xl">
-                <BarChart3 className="w-6 h-6 text-indigo-600" />
+              <div className="p-3 bg-white/20 rounded-2xl">
+                <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Monthly Status</p>
-                <h3 className="text-2xl font-black text-slate-900">{stats.monthly}</h3>
+                <p className="text-xs font-bold text-white/80 uppercase tracking-widest">Monthly Status</p>
+                <h3 className="text-2xl font-black text-white">{stats.monthly}</h3>
               </div>
             </div>
-            <p className="text-[10px] font-bold text-indigo-600 py-1 px-2 bg-indigo-50 rounded-full inline-block">
+            <p className="text-[10px] font-bold text-white/70 py-1 px-2 bg-white/10 rounded-full inline-block">
               {selectedMonth === 0 ? 'All Months' : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][selectedMonth - 1]} {selectedYear}
             </p>
           </motion.div>
@@ -320,41 +559,38 @@ export default function VisitorManagement() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm"
+            className="bg-church-blue p-6 rounded-3xl border border-church-blue/20 shadow-lg hover:shadow-xl transition-all text-white"
           >
             <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 bg-emerald-50 rounded-2xl">
-                <TrendingUp className="w-6 h-6 text-emerald-600" />
+              <div className="p-3 bg-white/20 rounded-2xl">
+                <TrendingUp className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Yearly Volume</p>
-                <h3 className="text-2xl font-black text-slate-900">{stats.yearly}</h3>
+                <p className="text-xs font-bold text-white/80 uppercase tracking-widest">Yearly Volume</p>
+                <h3 className="text-2xl font-black text-white">{stats.yearly}</h3>
               </div>
             </div>
-            <p className="text-[10px] font-bold text-emerald-600 py-1 px-2 bg-emerald-50 rounded-full inline-block">Full Year {selectedYear}</p>
+            <p className="text-[10px] font-bold text-white/70 py-1 px-2 bg-white/10 rounded-full inline-block">Full Year {selectedYear}</p>
           </motion.div>
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-indigo-600 p-6 rounded-3xl shadow-lg relative overflow-hidden text-white"
+            className="bg-yellow-400 p-6 rounded-3xl border border-yellow-400/20 shadow-lg hover:shadow-xl transition-all text-slate-900"
           >
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-3 bg-white/20 rounded-2xl">
-                  <Target className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Conversion Rate</p>
-                  <h3 className="text-2xl font-black text-white">{stats.conversionRate}%</h3>
-                </div>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-white/30 rounded-2xl">
+                <Target className="w-6 h-6 text-church-blue" />
               </div>
-              <p className="text-[10px] font-bold text-indigo-200 py-1 px-2 bg-white/10 rounded-full inline-block">
-                {stats.converted} Converts in Selected Period
-              </p>
+              <div>
+                <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">Conversion Rate</p>
+                <h3 className="text-2xl font-black text-slate-900">{stats.conversionRate}%</h3>
+              </div>
             </div>
-            <Target className="absolute -right-8 -bottom-8 w-32 h-32 text-white/10" />
+            <p className="text-[10px] font-bold text-slate-700 py-1 px-2 bg-white/50 rounded-full inline-block">
+              {stats.converted} Converts in Selected Period
+            </p>
           </motion.div>
         </div>
       </div>
@@ -528,12 +764,80 @@ export default function VisitorManagement() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Residence / Location</label>
                   <div className="grid grid-cols-3 gap-4">
-                    <input placeholder="Village" className="w-full px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all text-xs font-bold" value={newVisitor.residence.village} onChange={e => setNewVisitor({...newVisitor, residence: {...newVisitor.residence, village: e.target.value}})} />
-                    <input placeholder="Parish" className="w-full px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all text-xs font-bold" value={newVisitor.residence.parish} onChange={e => setNewVisitor({...newVisitor, residence: {...newVisitor.residence, parish: e.target.value}})} />
-                    <input placeholder="Division" className="w-full px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all text-xs font-bold" value={newVisitor.residence.division} onChange={e => setNewVisitor({...newVisitor, residence: {...newVisitor.residence, division: e.target.value}})} />
+                    <div className="relative">
+                      <select 
+                        className="w-full px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all text-xs font-bold appearance-none"
+                        value={newVisitor.residence.division}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__ADD_NEW__') {
+                            setShowAddDivision(true);
+                          } else {
+                            setNewVisitor({...newVisitor, residence: {...newVisitor.residence, division: value, parish: '', village: ''}});
+                          }
+                        }}
+                      >
+                        <option value="">Select Division</option>
+                        {kampalaLocations.divisions.map(division => (
+                          <option key={division} value={division}>{division}</option>
+                        ))}
+                        <option value="__ADD_NEW__">+ Add New</option>
+                      </select>
+                      <div className="absolute right-2 top-1/2 pointer-events-none">
+                        <ChevronRight className="w-3 h-3 text-church-blue rotate-90" />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <select 
+                        className="w-full px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all text-xs font-bold appearance-none disabled:opacity-50"
+                        value={newVisitor.residence.parish}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__ADD_NEW__') {
+                            setShowAddParish(true);
+                          } else {
+                            setNewVisitor({...newVisitor, residence: {...newVisitor.residence, parish: value, village: ''}});
+                          }
+                        }}
+                        disabled={!newVisitor.residence.division}
+                      >
+                        <option value="">Select Parish</option>
+                        {newVisitor.residence.division && kampalaLocations.parishes[newVisitor.residence.division]?.map(parish => (
+                          <option key={parish} value={parish}>{parish}</option>
+                        ))}
+                        {newVisitor.residence.division && <option value="__ADD_NEW__">+ Add New</option>}
+                      </select>
+                      <div className="absolute right-2 top-1/2 pointer-events-none">
+                        <ChevronRight className="w-3 h-3 text-church-blue rotate-90" />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <select 
+                        className="w-full px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all text-xs font-bold appearance-none disabled:opacity-50"
+                        value={newVisitor.residence.village}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__ADD_NEW__') {
+                            setShowAddVillage(true);
+                          } else {
+                            setNewVisitor({...newVisitor, residence: {...newVisitor.residence, village: value}});
+                          }
+                        }}
+                        disabled={!newVisitor.residence.parish}
+                      >
+                        <option value="">Select Village</option>
+                        {newVisitor.residence.parish && kampalaLocations.villages[newVisitor.residence.parish]?.map(village => (
+                          <option key={village} value={village}>{village}</option>
+                        ))}
+                        {newVisitor.residence.parish && <option value="__ADD_NEW__">+ Add New</option>}
+                      </select>
+                      <div className="absolute right-2 top-1/2 pointer-events-none">
+                        <ChevronRight className="w-3 h-3 text-church-blue rotate-90" />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -556,9 +860,53 @@ export default function VisitorManagement() {
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Date of Visit</label>
                     <input required type="date" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newVisitor.visitationDate} onChange={e => setNewVisitor({...newVisitor, visitationDate: e.target.value})} />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 relative">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Invited By</label>
-                    <input type="text" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newVisitor.invitedBy} onChange={e => setNewVisitor({...newVisitor, invitedBy: e.target.value})} />
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" 
+                        value={invitedByInput} 
+                        onChange={e => handleInvitedByChange(e.target.value)}
+                        placeholder="Start typing member name..."
+                      />
+                      {selectedInvitedByMember && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedInvitedByMember(null);
+                            setInvitedByInput('');
+                            setNewVisitor({...newVisitor, invitedBy: ''});
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-church-soft rounded-lg hover:bg-church-blue/10 transition-all"
+                        >
+                          <X className="w-4 h-4 text-church-gray" />
+                        </button>
+                      )}
+                    </div>
+                    {showInvitedBySuggestions && filteredInvitedByMembers.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-church-blue/20 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto">
+                        {filteredInvitedByMembers.map(member => (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => selectInvitedByMember(member)}
+                            className="w-full text-left px-4 py-3 hover:bg-church-blue/5 transition-all border-b border-church-soft last:border-b-0"
+                          >
+                            <div className="font-bold text-sm text-church-black">{member.name}</div>
+                            <div className="text-xs text-church-gray">Click to select this member</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showInvitedBySuggestions && filteredInvitedByMembers.length === 0 && invitedByInput.trim() && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-church-blue/20 rounded-xl shadow-lg z-10 p-4">
+                        <div className="text-center">
+                          <div className="text-sm font-bold text-church-gray mb-2">No existing members found</div>
+                          <div className="text-xs text-church-gray">This will be recorded as a new name</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -572,6 +920,149 @@ export default function VisitorManagement() {
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Division Modal */}
+      <AnimatePresence>
+        {showAddDivision && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+          >
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+              <h3 className="text-2xl font-display font-black mb-6">Add New Division</h3>
+              <input 
+                type="text"
+                placeholder="Enter division name..."
+                className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-lg font-bold mb-6"
+                value={newDivision}
+                onChange={(e) => setNewDivision(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setShowAddDivision(false);
+                    setNewDivision('');
+                  }}
+                  className="flex-1 bg-church-soft text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-blue/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (newDivision.trim()) {
+                      kampalaLocations.divisions.push(newDivision.trim());
+                      kampalaLocations.parishes[newDivision.trim()] = [];
+                      setNewVisitor({...newVisitor, residence: {...newVisitor.residence, division: newDivision.trim(), parish: '', village: ''}});
+                      setShowAddDivision(false);
+                      setNewDivision('');
+                    }
+                  }}
+                  className="flex-1 bg-church-yellow text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-church-yellow/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Add Division
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Parish Modal */}
+      <AnimatePresence>
+        {showAddParish && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+          >
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+              <h3 className="text-2xl font-display font-black mb-6">Add New Parish</h3>
+              <input 
+                type="text"
+                placeholder="Enter parish name..."
+                className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-lg font-bold mb-6"
+                value={newParish}
+                onChange={(e) => setNewParish(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setShowAddParish(false);
+                    setNewParish('');
+                  }}
+                  className="flex-1 bg-church-soft text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-blue/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (newParish.trim() && newVisitor.residence.division) {
+                      kampalaLocations.parishes[newVisitor.residence.division].push(newParish.trim());
+                      kampalaLocations.villages[newParish.trim()] = [];
+                      setNewVisitor({...newVisitor, residence: {...newVisitor.residence, parish: newParish.trim(), village: ''}});
+                      setShowAddParish(false);
+                      setNewParish('');
+                    }
+                  }}
+                  className="flex-1 bg-church-yellow text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-church-yellow/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Add Parish
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Village Modal */}
+      <AnimatePresence>
+        {showAddVillage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+          >
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+              <h3 className="text-2xl font-display font-black mb-6">Add New Village</h3>
+              <input 
+                type="text"
+                placeholder="Enter village name..."
+                className="w-full px-6 py-4 rounded-2xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-lg font-bold mb-6"
+                value={newVillage}
+                onChange={(e) => setNewVillage(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setShowAddVillage(false);
+                    setNewVillage('');
+                  }}
+                  className="flex-1 bg-church-soft text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-blue/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (newVillage.trim() && newVisitor.residence.parish) {
+                      kampalaLocations.villages[newVisitor.residence.parish].push(newVillage.trim());
+                      setNewVisitor({...newVisitor, residence: {...newVisitor.residence, village: newVillage.trim()}});
+                      setShowAddVillage(false);
+                      setNewVillage('');
+                    }
+                  }}
+                  className="flex-1 bg-church-yellow text-church-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-church-yellow/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Add Village
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

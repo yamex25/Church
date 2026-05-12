@@ -135,11 +135,24 @@ export default function HRManagement() {
     setSubmitting(true);
     setError(null);
 
-    // Duplicate check
-    if (!editingEmployee && (employees.some(e => e.email === newEmployee.email) || employees.some(e => e.phone === newEmployee.phone))) {
-      setError("A staff member with this Email or Phone number already exists.");
-      setSubmitting(false);
-      return;
+    // Duplicate email check
+    if (!editingEmployee) {
+      const emailExists = employees.some(e => e.email === newEmployee.email);
+      const phoneExists = employees.some(e => e.phone === newEmployee.phone);
+      
+      if (emailExists && phoneExists) {
+        setError("This email and phone number are already registered to existing employees.");
+        setSubmitting(false);
+        return;
+      } else if (emailExists) {
+        setError("This email is already registered to an existing employee. Each email can only be used once.");
+        setSubmitting(false);
+        return;
+      } else if (phoneExists) {
+        setError("This phone number is already registered to an existing employee.");
+        setSubmitting(false);
+        return;
+      }
     }
 
     try {

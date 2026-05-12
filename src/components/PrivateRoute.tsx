@@ -27,9 +27,8 @@ export default function PrivateRoute({ children, role }: { children: React.React
     return <Navigate to="/" replace />;
   }
 
-  // Allow admins to view the portal if they choose to follow a /portal link
-  // but don't force them back to admin if they are trying to see the member view.
-  // We remove the auto-redirect from portal to admin for admins.
+  // Allow users to freely choose between dashboard and portal
+  // No role-based redirection - users can access both interfaces
 
   return <>{children}</>;
 }
