@@ -29,24 +29,22 @@ export default function AuthPage() {
   }
 
   if (user) {
-    // Redirect everyone to the admin dashboard for the vetting phase
     const from = (location.state as any)?.from?.pathname;
     if (from && from !== '/') {
       return <Navigate to={from} replace />;
     }
-    return <Navigate to="/admin" replace />;
+    const ADMIN_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.PASTOR, UserRole.TREASURER, UserRole.SECRETARY, UserRole.DPT_LEADER];
+    const defaultRoute = ADMIN_ROLES.includes(user.role) ? '/admin' : '/portal';
+    return <Navigate to={defaultRoute} replace />;
   }
 
   const handleLogin = async () => {
-    console.log("AuthPage: Login button clicked");
     setAuthError(null);
     setIsSigningIn(true);
     try {
-      console.log("AuthPage: Initiating signInWithGoogle...");
       await signInWithGoogle();
-      console.log("AuthPage: signInWithGoogle completed successfully");
     } catch (err: any) {
-      console.error("AuthPage: Login error caught:", err);
+
       if (err.code === 'auth/popup-closed-by-user') {
         setAuthError("Login window closed. Please try again.");
       } else {

@@ -62,32 +62,44 @@ export default function AssetInventory() {
 
   const viewProof = (url: string) => {
     if (!url) return;
+    if (!url.startsWith('data:image/') && !url.startsWith('data:application/pdf')) return;
     try {
       const newTab = window.open();
       if (newTab) {
-        newTab.document.body.innerHTML = `
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f8fafc; font-family: sans-serif; padding: 40px;">
-            <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 90%;">
-              ${url.startsWith('data:image') 
-                ? `<img src="${url}" style="max-width: 100%; height: auto; border-radius: 8px;">` 
-                : `<iframe src="${url}" style="width: 800px; height: 600px; border: none;"></iframe>`
-              }
-              <div style="margin-top: 20px; text-align: center;">
-                <p style="font-weight: bold; color: #1e293b;">Asset Proof Document</p>
-                <a href="${url}" download="asset-proof" style="display: inline-block; background: #4f46e5; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; margin-top: 10px;">Download Document</a>
-              </div>
-            </div>
-          </div>
-        `;
+        const doc = newTab.document;
+        doc.body.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f8fafc;font-family:sans-serif;padding:40px;';
+        const wrapper = doc.createElement('div');
+        wrapper.style.cssText = 'background:white;padding:20px;border-radius:12px;box-shadow:0 4px 6px -1px rgb(0 0 0/0.1);max-width:90%;text-align:center;';
+        if (url.startsWith('data:image/')) {
+          const img = doc.createElement('img');
+          img.src = url;
+          img.style.cssText = 'max-width:100%;height:auto;border-radius:8px;';
+          wrapper.appendChild(img);
+        } else {
+          const iframe = doc.createElement('iframe');
+          iframe.src = url;
+          iframe.style.cssText = 'width:800px;height:600px;border:none;';
+          iframe.sandbox.add('allow-same-origin');
+          wrapper.appendChild(iframe);
+        }
+        const label = doc.createElement('p');
+        label.textContent = 'Asset Proof Document';
+        label.style.cssText = 'font-weight:bold;color:#1e293b;margin-top:20px;';
+        wrapper.appendChild(label);
+        const link = doc.createElement('a');
+        link.href = url;
+        link.download = 'asset-proof';
+        link.textContent = 'Download Document';
+        link.style.cssText = 'display:inline-block;background:#4f46e5;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;margin-top:10px;';
+        wrapper.appendChild(link);
+        doc.body.appendChild(wrapper);
       } else {
-        // Fallback to direct download if popup blocked
         const link = document.createElement('a');
         link.href = url;
         link.download = 'asset-proof';
         link.click();
       }
     } catch (err) {
-      console.error("Error viewing proof:", err);
       alert("Could not open document. Try downloading it instead.");
     }
   };

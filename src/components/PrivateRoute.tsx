@@ -19,7 +19,6 @@ export default function PrivateRoute({ children, role }: { children: React.React
   }
 
   if (role === 'admin' && !isAdmin) {
-    // During vetting phase, anyone authenticated is allowed
     return <Navigate to="/portal" replace />;
   }
 

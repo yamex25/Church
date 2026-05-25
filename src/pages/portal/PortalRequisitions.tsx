@@ -78,7 +78,7 @@ export default function PortalRequisitions() {
           }));
         }
       } catch (error) {
-        console.error('Error fetching employee department:', error);
+
         setFormData(prev => ({
           ...prev,
           requesterName: user.displayName || '',

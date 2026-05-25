@@ -270,6 +270,12 @@ export default function FinanceModule() {
     e.preventDefault();
     if (!user) return;
 
+    const amount = Number(newRecord.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert("Please enter a valid positive amount.");
+      return;
+    }
+
     try {
       if (editingRecord) {
         const docRef = doc(db, 'finance', editingRecord.id!);
