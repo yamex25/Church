@@ -135,10 +135,64 @@ export default function HRManagement() {
     setSubmitting(true);
     setError(null);
 
-    // Duplicate email check
+    // Input validation
+    const trimmedName = newEmployee.name.trim();
+    const trimmedRole = newEmployee.role.trim();
+    const trimmedEmail = newEmployee.email.trim();
+    const trimmedPhone = newEmployee.phone.trim();
+
+    if (trimmedName.length < 2) {
+      setError("Full name must be at least 2 characters long.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (trimmedRole.length < 2) {
+      setError("Role must be at least 2 characters long.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (!newEmployee.department) {
+      setError("Please select a department.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address (e.g. name@example.com).");
+      setSubmitting(false);
+      return;
+    }
+
+    if (!trimmedPhone) {
+      setError("Phone contact is required.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (!/^\+?[0-9\s\-()]{7,20}$/.test(trimmedPhone)) {
+      setError("Please enter a valid phone number (7-20 digits, may include +, spaces, dashes, or parentheses).");
+      setSubmitting(false);
+      return;
+    }
+
+    if (!newEmployee.salary || Number(newEmployee.salary) <= 0) {
+      setError("Monthly salary must be greater than zero.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (!newEmployee.joinedDate) {
+      setError("Date of joining is required.");
+      setSubmitting(false);
+      return;
+    }
+
+    // Duplicate email/phone check
     if (!editingEmployee) {
-      const emailExists = employees.some(e => e.email === newEmployee.email);
-      const phoneExists = employees.some(e => e.phone === newEmployee.phone);
+      const emailExists = trimmedEmail && employees.some(e => e.email === trimmedEmail);
+      const phoneExists = employees.some(e => e.phone === trimmedPhone);
       
       if (emailExists && phoneExists) {
         setError("This email and phone number are already registered to existing employees.");
@@ -156,18 +210,25 @@ export default function HRManagement() {
     }
 
     try {
+      const employeeData = {
+        ...newEmployee,
+        name: trimmedName,
+        role: trimmedRole,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        salary: Number(newEmployee.salary),
+      };
+
       if (editingEmployee) {
         const docRef = doc(db, 'employees', editingEmployee.id!);
         await updateDoc(docRef, {
-          ...newEmployee,
-          salary: Number(newEmployee.salary),
+          ...employeeData,
           updatedAt: serverTimestamp()
         });
         alert("Staff record updated successfully.");
       } else {
         await addDoc(collection(db, 'employees'), {
-          ...newEmployee,
-          salary: Number(newEmployee.salary),
+          ...employeeData,
           createdAt: serverTimestamp()
         });
         alert("Staff contract created successfully.");
@@ -177,6 +238,7 @@ export default function HRManagement() {
       setNewEmployee(initialEmployeeState);
     } catch (err: any) {
       console.error("Error saving employee:", err);
+      setError(err.message || "Failed to save employee record. Please try again.");
       handleFirestoreError(err, editingEmployee ? OperationType.UPDATE : OperationType.CREATE, 'employees');
     } finally {
       setSubmitting(false);
@@ -226,16 +288,29 @@ export default function HRManagement() {
   const handleProcessPayroll = async (e: React.FormEvent) => {
     e.preventDefault();
     const emp = employees.find(e => e.id === newPayroll.employeeId);
-    if (!emp || !user) return;
+    if (!emp) {
+      setError("Please select a valid employee.");
+      return;
+    }
+    if (!user) {
+      setError("Authentication required. Please log in again to process payroll.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
 
     try {
+      if (!newPayroll.month) {
+        setError("Please select a payroll month.");
+        setSubmitting(false);
+        return;
+      }
+
       // Restriction: Employee cannot be paid for months before they joined
       const joinedMonth = emp.joinedDate.slice(0, 7);
       if (newPayroll.month < joinedMonth) {
-        alert(`Access Denied: This staff member (${emp.name}) joined in ${joinedMonth}. You cannot process payroll for ${newPayroll.month}.`);
+        setError(`This staff member (${emp.name}) joined in ${joinedMonth}. You cannot process payroll for ${newPayroll.month}.`);
         setSubmitting(false);
         return;
       }
@@ -244,7 +319,7 @@ export default function HRManagement() {
       const currentBalance = getMonthBalance(emp.id!, newPayroll.month);
 
       if (currentBalance <= 0) {
-        alert(`Access Denied: This staff member (${emp.name}) has already been FULLY PAID for ${newPayroll.month}.`);
+        setError(`This staff member (${emp.name}) has already been fully paid for ${newPayroll.month}.`);
         setSubmitting(false);
         return;
       }
@@ -253,13 +328,13 @@ export default function HRManagement() {
       const paymentAmount = Math.round(paymentAmountValue); // Use round to avoid -1 issues from floating point
       
       if (isNaN(paymentAmount) || paymentAmount <= 0) {
-        alert("Invalid amount: Please enter a positive number for payment.");
+        setError("Invalid amount: Please enter a positive number for payment.");
         setSubmitting(false);
         return;
       }
 
       if (paymentAmount > currentBalance + 1) { // Add tiny buffer for rounding errors if any
-        alert(`Validation Error: The payment amount (UGX ${paymentAmount.toLocaleString()}) exceeds the outstanding balance (UGX ${currentBalance.toLocaleString()}) for ${newPayroll.month}.`);
+        setError(`The payment amount (UGX ${paymentAmount.toLocaleString()}) exceeds the outstanding balance (UGX ${currentBalance.toLocaleString()}) for ${newPayroll.month}.`);
         setSubmitting(false);
         return;
       }
@@ -292,6 +367,7 @@ export default function HRManagement() {
       alert(`Payment Successful: UGX ${paymentAmount.toLocaleString()} processed for ${emp.name}. Remaining Balance: UGX ${newBalance.toLocaleString()}`);
     } catch (err: any) {
       console.error("Critical Payroll Error:", err);
+      setError(err.message || "Failed to process payment. Please try again.");
       handleFirestoreError(err, OperationType.CREATE, 'payroll');
     } finally {
       setSubmitting(false);
@@ -299,6 +375,11 @@ export default function HRManagement() {
   };
 
   const handleBulkPayroll = async () => {
+    if (!user) {
+      setError("Authentication required. Please log in again to process bulk payroll.");
+      return;
+    }
+
     const activeStaff = employees.filter(e => e.status === 'Active');
     if (activeStaff.length === 0) {
       alert("No active staff found to pay.");
@@ -310,6 +391,7 @@ export default function HRManagement() {
     if (!confirmPay) return;
 
     setSubmitting(true);
+    setError(null);
     let successCount = 0;
 
     try {
@@ -329,7 +411,7 @@ export default function HRManagement() {
           paymentDate: new Date().toISOString(),
           status: 'Paid',
           paymentMethod: 'Bank Transfer',
-          recordedBy: user?.uid,
+          recordedBy: user.uid,
           createdAt: serverTimestamp()
         });
         successCount++;
@@ -337,6 +419,7 @@ export default function HRManagement() {
       alert(`Bulk payroll processed successfully for ${successCount} staff members.`);
     } catch (err: any) {
       console.error("Bulk payroll error:", err);
+      setError(err.message || `Bulk payroll failed after processing ${successCount} records. Please verify and retry.`);
       handleFirestoreError(err, OperationType.CREATE, 'payroll');
     } finally {
       setSubmitting(false);
@@ -664,14 +747,20 @@ export default function HRManagement() {
   const handleAddDept = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDeptName.trim() || submitting) return;
+
+    if (newDeptName.trim().length < 2) {
+      setError("Department name must be at least 2 characters long.");
+      return;
+    }
     
     // Duplicate check
     if (departments.some(d => d.name.toLowerCase() === newDeptName.trim().toLowerCase())) {
-      alert(`Department "${newDeptName}" already exists.`);
+      setError(`Department "${newDeptName.trim()}" already exists.`);
       return;
     }
 
     setSubmitting(true);
+    setError(null);
     try {
       await addDoc(collection(db, 'departments'), {
         name: newDeptName.trim(),
@@ -679,9 +768,10 @@ export default function HRManagement() {
       });
       setNewDeptName('');
       setShowAddDept(false);
-      alert(`Department "${newDeptName}" created successfully.`);
+      alert(`Department "${newDeptName.trim()}" created successfully.`);
     } catch (err: any) {
       console.error("Error adding department:", err);
+      setError(err.message || "Failed to create department. Please try again.");
       handleFirestoreError(err, OperationType.CREATE, 'departments');
     } finally {
       setSubmitting(false);
@@ -690,11 +780,17 @@ export default function HRManagement() {
 
   const handleInitializeDepts = async () => {
     if (submitting) return;
+    if (!user) {
+      setError("Authentication required. Please log in again.");
+      return;
+    }
+
     const defaults = ['Administration', 'Spiritual Ministry', 'Media & ICT', 'Music & Worship', 'Maintenance & Security', 'Outreach'];
     const confirmInit = confirm("This will create 6 standard ministry departments. Continue?");
     if (!confirmInit) return;
 
     setSubmitting(true);
+    setError(null);
     let count = 0;
     try {
       for (const d of defaults) {
@@ -710,6 +806,7 @@ export default function HRManagement() {
       alert(`Standard setup complete! ${count} departments initialized.`);
     } catch (err: any) {
       console.error("Error initializing departments:", err);
+      setError(err.message || "Failed to initialize departments. Please try again.");
       handleFirestoreError(err, OperationType.CREATE, 'departments');
     } finally {
       setSubmitting(false);
@@ -718,17 +815,19 @@ export default function HRManagement() {
 
   const handleRemoveDept = async (id: string, name: string) => {
     if (employees.some(e => e.department === name)) {
-      alert("Cannot remove department that still has staff members. Please reassign or remove staff first.");
+      setError("Cannot remove department that still has staff members. Please reassign or remove staff first.");
       return;
     }
     if (!confirm(`Are you sure you want to permanently remove the "${name}" department?`)) return;
     
     setSubmitting(true);
+    setError(null);
     try {
       await deleteDoc(doc(db, 'departments', id));
       alert("Department removed successfully.");
     } catch (err: any) {
       console.error("Error removing department:", err);
+      setError(err.message || "Failed to remove department. Please try again.");
       handleFirestoreError(err, OperationType.DELETE, 'departments');
     } finally {
       setSubmitting(false);
@@ -813,6 +912,16 @@ export default function HRManagement() {
           )}
         </div>
       </div>
+
+      {/* Global error banner */}
+      {error && !showAddEmployee && !showAddPayroll && (
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold rounded-2xl flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="ml-4 p-1 hover:bg-rose-100 rounded-lg transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Stats section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
