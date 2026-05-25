@@ -1,37 +1,63 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  Download, 
-  Plus, 
+import {
+  DollarSign,
+  TrendingUp,
+  Download,
+  Plus,
   Search,
-  Filter,
-  ArrowUpRight,
-  PieChart as PieIcon,
   X,
   CalendarDays,
-  ArrowRightLeft
+  ArrowRightLeft,
+  TrendingDown,
+  Wallet,
+  Filter,
+  ExternalLink
 } from 'lucide-react';
-import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, BarChart, Bar } from 'recharts';
 import { formatCurrency, formatDate, downloadExcel, cn } from '@/src/lib/utils';
-import { TransactionType, FinanceRecord } from '@/src/types';
+import { TransactionType, FinanceRecord, ExpenseType, Expense } from '@/src/types';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, where } from 'firebase/firestore';
 import { useAuth } from '@/src/components/AuthContext';
 
 export default function FinanceModule() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
+  const [filterPeriodType, setFilterPeriodType] = useState<'month' | 'year'>('month');
   const [records, setRecords] = useState<FinanceRecord[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [services, setServices] = useState<{id: string, name: string}[]>([]);
-  const [projects, setProjects] = useState<{id: string, name: string}[]>([]);
+  const [projects, setProjects] = useState<{id: string, name: string, projectId?: string}[]>([]);
+  const [customTypes, setCustomTypes] = useState<{id: string, name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState<FinanceRecord | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [showReports, setShowReports] = useState(false);
+  const [activeTab, setActiveTab] = useState<'income' | 'expenses' | 'dashboard'>('dashboard');
+  const [showAddTypeModal, setShowAddTypeModal] = useState(false);
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectData, setNewProjectData] = useState({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', status: 'Active', projectId: '' });
   
-  const initialRecordState = {
+  const initialRecordState: {
+    memberName: string;
+    type: TransactionType | string;
+    amount: number;
+    category: string;
+    description: string;
+    serviceName: string;
+    date: string;
+  } = {
     memberName: '',
     type: TransactionType.TITHE,
     amount: 0,
@@ -41,7 +67,17 @@ export default function FinanceModule() {
     date: new Date().toISOString().split('T')[0]
   };
 
-  const [newRecord, setNewRecord] = useState(initialRecordState);
+  const [newRecord, setNewRecord] = useState<typeof initialRecordState>(initialRecordState);
+
+  const initialExpenseState = {
+    type: ExpenseType.SALARY,
+    category: '',
+    description: '',
+    amount: 0,
+    date: new Date().toISOString().split('T')[0]
+  };
+
+  const [newExpense, setNewExpense] = useState(initialExpenseState);
 
   useEffect(() => {
     const q = query(collection(db, 'finance'), orderBy('date', 'desc'));
@@ -60,6 +96,22 @@ export default function FinanceModule() {
   }, []);
 
   useEffect(() => {
+    // Fetch Expenses
+    const expenseQuery = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+    const unsubscribeExpenses = onSnapshot(expenseQuery, (snapshot) => {
+      const expenseDocs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Expense[];
+      setExpenses(expenseDocs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'expenses');
+    });
+
+    return () => unsubscribeExpenses();
+  }, []);
+
+  useEffect(() => {
     // Fetch Services
     const unsubscribeServices = onSnapshot(query(collection(db, 'services'), orderBy('name', 'asc')), (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
@@ -67,13 +119,21 @@ export default function FinanceModule() {
 
     // Fetch Projects
     const unsubscribeProjects = onSnapshot(query(collection(db, 'projects'), orderBy('name', 'asc')), (snapshot) => {
-      setProjects(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+      setProjects(snapshot.docs.map(doc => ({ id: doc.id, projectId: doc.data().projectId || doc.id, name: doc.data().name })));
     });
 
     return () => {
       unsubscribeServices();
       unsubscribeProjects();
     };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribeCustomTypes = onSnapshot(query(collection(db, 'financeTypes'), orderBy('name', 'asc')), (snapshot) => {
+      setCustomTypes(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+    });
+
+    return () => unsubscribeCustomTypes();
   }, []);
 
   const handleInitializeFinanceData = async () => {
@@ -88,7 +148,7 @@ export default function FinanceModule() {
       }
       for (const p of defaultProjects) {
         if (!projects.some(pj => pj.name === p)) {
-          await addDoc(collection(db, 'projects'), { name: p, createdAt: serverTimestamp() });
+          await addDoc(collection(db, 'projects'), { projectId: `PRJ_${p.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`, name: p, createdAt: serverTimestamp() });
         }
       }
       alert("Financial categories initialized.");
@@ -97,7 +157,114 @@ export default function FinanceModule() {
     }
   };
 
-  const [showReports, setShowReports] = useState(false);
+  const handleAddNewType = async () => {
+    if (!newTypeName.trim()) {
+      alert("Type name is required");
+      return;
+    }
+    if (!user) {
+      alert("You must be logged in to add a type");
+      return;
+    }
+    try {
+      // Generate a unique ID for the custom type
+      const typeId = `CUSTOM_${newTypeName.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`;
+      
+      console.log("Adding custom type with data:", {
+        type: newTypeName.trim(),
+        typeId: typeId,
+      });
+      
+      const docRef = await addDoc(collection(db, 'financeTypes'), {
+        name: newTypeName.trim(),
+        typeId: typeId,
+        createdBy: user?.uid,
+        createdAt: serverTimestamp()
+      });
+      console.log("Custom type created with ID:", docRef.id);
+      setNewTypeName('');
+      setShowAddTypeModal(false);
+      alert("New type added successfully.");
+    } catch (error) {
+      console.error("Error adding type:", error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to add new type: ${message}`);
+    }
+  };
+
+  const handleAddNewService = async () => {
+    if (!newServiceName.trim()) {
+      alert("Service name is required");
+      return;
+    }
+    if (!user) {
+      alert("You must be logged in to add a service");
+      return;
+    }
+    try {
+      const serviceId = `SRV_${newServiceName.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`;
+      console.log("Adding service with data:", {
+        name: newServiceName,
+        id: serviceId,
+      });
+      const docRef = await addDoc(collection(db, 'services'), { 
+        name: newServiceName, 
+        id: serviceId,
+        createdAt: serverTimestamp() 
+      });
+      console.log("Service created with ID:", docRef.id);
+      setNewServiceName('');
+      setShowAddServiceModal(false);
+      alert("New service added successfully.");
+    } catch (error) {
+      console.error("Error adding service:", error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to add new service: ${message}`);
+    }
+  };
+
+  const handleAddNewProject = async () => {
+    if (!newProjectData.name.trim()) {
+      alert("Project name is required");
+      return;
+    }
+    if (!user) {
+      alert("You must be logged in to add a project");
+      return;
+    }
+    try {
+      console.log("Adding project with data:", {
+        name: newProjectData.name.trim(),
+        targetAmount: newProjectData.targetAmount || 0,
+        status: newProjectData.status || 'Active',
+        description: newProjectData.description || '',
+        startDate: newProjectData.startDate || null,
+        endDate: newProjectData.endDate || null,
+        createdBy: user?.displayName || user?.email || 'Staff',
+      });
+      const projectId = `PRJ_${newProjectData.name.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`;
+      const docRef = await addDoc(collection(db, 'projects'), { 
+        projectId,
+        name: newProjectData.name.trim(), 
+        targetAmount: newProjectData.targetAmount || 0,
+        status: newProjectData.status || 'Active',
+        description: newProjectData.description || '',
+        startDate: newProjectData.startDate || null,
+        endDate: newProjectData.endDate || null,
+        createdBy: user?.displayName || user?.email || 'Staff',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      console.log("Project created with ID:", docRef.id);
+      setNewProjectData({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', status: 'Active', projectId: '' });
+      setShowAddProjectModal(false);
+      alert("New project added successfully.");
+    } catch (error) {
+      console.error("Error adding project:", error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to add new project: ${message}`);
+    }
+  };
 
   const handleCreateRecord = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,8 +324,91 @@ export default function FinanceModule() {
   };
 
   const handleExport = () => {
-    downloadExcel(records, `graceflow_finance_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const exportData = records.map((record, index) => ({
+      ID: index + 1,
+      Amount: record.amount,
+      Category: record.category,
+      ServiceName: record.serviceName || '',
+      Date: record.date
+    }));
+    downloadExcel(exportData, `graceflow_finance_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
+
+  // Expense Handlers
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      if (editingExpense) {
+        const docRef = doc(db, 'expenses', editingExpense.id!);
+        await updateDoc(docRef, {
+          ...newExpense,
+          amount: Number(newExpense.amount),
+          date: new Date(newExpense.date).toISOString(),
+          updatedAt: serverTimestamp()
+        });
+        alert("Expense updated successfully.");
+      } else {
+        await addDoc(collection(db, 'expenses'), {
+          ...newExpense,
+          amount: Number(newExpense.amount),
+          date: new Date(newExpense.date).toISOString(),
+          recordedBy: user.uid,
+          createdAt: serverTimestamp(),
+          status: 'approved'
+        });
+        alert("Expense recorded successfully.");
+      }
+      setShowExpenseForm(false);
+      setEditingExpense(null);
+      setNewExpense(initialExpenseState);
+    } catch (error) {
+      handleFirestoreError(error, editingExpense ? OperationType.UPDATE : OperationType.CREATE, 'expenses');
+    }
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setNewExpense({
+      type: expense.type,
+      category: expense.category || '',
+      description: expense.description || '',
+      amount: expense.amount,
+      date: expense.date.split('T')[0]
+    });
+    setShowExpenseForm(true);
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this expense?")) return;
+    try {
+      await deleteDoc(doc(db, 'expenses', id));
+      alert("Expense deleted successfully.");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'expenses');
+    }
+  };
+
+  // Filter records and expenses by period
+  const getFilteredData = (data: any[], dateField: string) => {
+    return data.filter(item => {
+      // Extract date string in ISO format (2026-05-15T...)
+      const dateStr = item[dateField];
+      // Get YYYY-MM and YYYY from the ISO string directly to avoid timezone issues
+      const itemMonth = dateStr.slice(0, 7);
+      const itemYear = dateStr.slice(0, 4);
+
+      if (filterPeriodType === 'month') {
+        return itemMonth === filterMonth;
+      } else {
+        return itemYear === filterYear;
+      }
+    });
+  };
+
+  const filteredIncomeRecords = getFilteredData(records, 'date');
+  const filteredExpenses = getFilteredData(expenses, 'date');
 
   const totals = records.reduce((acc, curr) => {
     acc.total += curr.amount;
@@ -177,6 +427,30 @@ export default function FinanceModule() {
     return acc;
   }, { total: 0, services: {}, yearly: {} } as any);
 
+  // Calculate filtered period totals
+  const filteredPeriodTotals = {
+    income: filteredIncomeRecords.reduce((sum, r) => sum + r.amount, 0),
+    expenses: filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
+    serviceBreakdown: {} as Record<string, number>,
+    expenseBreakdown: {} as Record<string, number>
+  };
+
+  // Calculate service breakdown for filtered period
+  filteredIncomeRecords.forEach(record => {
+    const serviceName = record.serviceName || 'Standard Service';
+    filteredPeriodTotals.serviceBreakdown[serviceName] = 
+      (filteredPeriodTotals.serviceBreakdown[serviceName] || 0) + record.amount;
+  });
+
+  // Calculate expense breakdown by type for filtered period
+  filteredExpenses.forEach(expense => {
+    const expenseType = expense.type || 'Other';
+    filteredPeriodTotals.expenseBreakdown[expenseType] = 
+      (filteredPeriodTotals.expenseBreakdown[expenseType] || 0) + expense.amount;
+  });
+
+  const availableBalance = filteredPeriodTotals.income - filteredPeriodTotals.expenses;
+
   const categoryData = [
     { name: 'Tithe', value: totals[TransactionType.TITHE] || 0, color: '#3b82f6' },
     { name: 'Offering', value: totals[TransactionType.OFFERING] || 0, color: '#10b981' },
@@ -191,10 +465,11 @@ export default function FinanceModule() {
   );
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Financial Records</h2>
-          <p className="text-slate-500 text-sm">Monitor contributions and manage church income.</p>
+          <h2 className="text-2xl font-bold">Finance Dashboard</h2>
+          <p className="text-slate-500 text-sm">Manage income, expenses, and cash flow.</p>
         </div>
         <div className="flex gap-2">
           <button 
@@ -213,23 +488,159 @@ export default function FinanceModule() {
             </button>
           )}
           <button 
-            onClick={() => setShowReports(!showReports)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all shadow-sm",
-              showReports ? "bg-slate-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            )}
-          >
-            <CalendarDays className="w-4 h-4" />
-            {showReports ? 'View Transactions' : 'Yearly Reports'}
-          </button>
-          <button 
             onClick={() => setShowAddForm(true)}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            New Record
+            Add Income
           </button>
+          <button 
+            onClick={() => setShowExpenseForm(true)}
+            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-orange-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add Expense
+          </button>
+          <Link 
+            to="/admin/daily-expenses"
+            className="flex items-center gap-2 border border-orange-200 text-orange-600 px-4 py-2 rounded-xl font-semibold hover:bg-orange-50 transition-colors shadow-sm"
+          >
+            <ExternalLink className="w-4 h-4" />
+            View Expenses
+          </Link>
         </div>
+      </div>
+
+      {/* Filter Controls */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Filter By</label>
+            <select 
+              value={filterPeriodType}
+              onChange={(e) => setFilterPeriodType(e.target.value as 'month' | 'year')}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium"
+            >
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </select>
+          </div>
+
+          {filterPeriodType === 'month' && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Select Month</label>
+              <input 
+                type="month"
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium"
+              />
+            </div>
+          )}
+
+          {filterPeriodType === 'year' && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Select Year</label>
+              <select 
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium"
+              >
+                {Array.from({ length: 21 }, (_, i) => 2026 + i).map(year => (
+                  <option key={year} value={year.toString()}>{year}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-end">
+            <button 
+              onClick={() => {
+                setFilterMonth(new Date().toISOString().slice(0, 7));
+                setFilterYear(new Date().getFullYear().toString());
+              }}
+              className="w-full px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-200 transition-all"
+            >
+              Reset Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Dashboard - KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Income Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-3xl border border-emerald-200 shadow-lg relative overflow-hidden group"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <TrendingUp className="w-16 h-16" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Total Income</h3>
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-2xl font-black text-emerald-900 mb-1">{formatCurrency(filteredPeriodTotals.income)}</p>
+            <p className="text-[10px] text-emerald-700 font-medium">
+              {filterPeriodType === 'month' ? new Date(filterMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : `Year ${filterYear}`}
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Total Expenses Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-3xl border border-orange-200 shadow-lg relative overflow-hidden group"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <TrendingDown className="w-16 h-16" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-bold text-orange-600 uppercase tracking-widest">Total Expenses</h3>
+              <TrendingDown className="w-4 h-4 text-orange-600" />
+            </div>
+            <p className="text-2xl font-black text-orange-900 mb-1">{formatCurrency(filteredPeriodTotals.expenses)}</p>
+            <p className="text-[10px] text-orange-700 font-medium">
+              Salaries & Requisitions
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Available Cash Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className={`p-4 rounded-3xl border shadow-lg relative overflow-hidden group ${
+            availableBalance >= 0 
+              ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' 
+              : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
+          }`}
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Wallet className={`w-16 h-16 ${availableBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`} />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className={`text-xs font-bold uppercase tracking-widest ${availableBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                Available Cash
+              </h3>
+              <Wallet className={`w-4 h-4 ${availableBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`} />
+            </div>
+            <p className={`text-2xl font-black mb-1 ${availableBalance >= 0 ? 'text-blue-900' : 'text-red-900'}`}>
+              {formatCurrency(availableBalance)}
+            </p>
+            <p className={`text-[10px] font-medium ${availableBalance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+              {availableBalance >= 0 ? 'Healthy balance' : 'Deficit'}
+            </p>
+          </div>
+        </motion.div>
       </div>
 
       <AnimatePresence>
@@ -252,13 +663,13 @@ export default function FinanceModule() {
               
               <form onSubmit={handleCreateRecord} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Member Name (or Anonymous)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Contribution Title</label>
                   <input 
                     type="text" 
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
                     value={newRecord.memberName}
                     onChange={(e) => setNewRecord({...newRecord, memberName: e.target.value})}
-                    placeholder="Enter name..."
+                    placeholder="Enter contribution title..."
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -267,12 +678,22 @@ export default function FinanceModule() {
                     <select 
                       className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
                       value={newRecord.type}
-                      onChange={(e) => setNewRecord({...newRecord, type: e.target.value as TransactionType})}
+                      onChange={(e) => {
+                        if (e.target.value === 'ADD_NEW') {
+                          setShowAddTypeModal(true);
+                        } else {
+                          setNewRecord({...newRecord, type: e.target.value as TransactionType | string});
+                        }
+                      }}
                     >
                       <option value={TransactionType.TITHE}>Tithe</option>
                       <option value={TransactionType.OFFERING}>Offering</option>
                       <option value={TransactionType.DONATION}>Donation</option>
                       <option value={TransactionType.OTHER}>Other</option>
+                      {customTypes.map((customType) => (
+                        <option key={customType.id} value={customType.name}>{customType.name}</option>
+                      ))}
+                      <option value="ADD_NEW">+ Add New Type</option>
                     </select>
                   </div>
                   <div>
@@ -281,13 +702,20 @@ export default function FinanceModule() {
                       required
                       className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                       value={newRecord.serviceName}
-                      onChange={(e) => setNewRecord({...newRecord, serviceName: e.target.value})}
+                      onChange={(e) => {
+                        if (e.target.value === 'ADD_NEW') {
+                          setShowAddServiceModal(true);
+                        } else {
+                          setNewRecord({...newRecord, serviceName: e.target.value});
+                        }
+                      }}
                     >
                       <option value="">Select Service...</option>
                       {services.map(s => (
                         <option key={s.id} value={s.name}>{s.name}</option>
                       ))}
                       {services.length === 0 && <option value="Sunday Morning Service">Sunday Morning Service</option>}
+                      <option value="ADD_NEW">+ Add New Service</option>
                     </select>
                   </div>
                   <div>
@@ -317,13 +745,20 @@ export default function FinanceModule() {
                     required
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                     value={newRecord.category}
-                    onChange={(e) => setNewRecord({...newRecord, category: e.target.value})}
+                    onChange={(e) => {
+                      if (e.target.value === 'ADD_NEW') {
+                        setShowAddProjectModal(true);
+                      } else {
+                        setNewRecord({...newRecord, category: e.target.value});
+                      }
+                    }}
                   >
                     <option value="">Select Project...</option>
                     {projects.map(p => (
                       <option key={p.id} value={p.name}>{p.name}</option>
                     ))}
                     {projects.length === 0 && <option value="Main">Main</option>}
+                    <option value="ADD_NEW">+ Add New Project</option>
                   </select>
                 </div>
                 <button 
@@ -331,6 +766,292 @@ export default function FinanceModule() {
                   className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
                 >
                   {editingRecord ? 'Update Entry' : 'Confirm Entry'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showExpenseForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl relative"
+            >
+              <button 
+                onClick={() => {
+                  setShowExpenseForm(false);
+                  setEditingExpense(null);
+                  setNewExpense(initialExpenseState);
+                }}
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <h3 className="text-xl font-bold mb-6">Record New Expense</h3>
+              <form onSubmit={handleCreateExpense} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Expense Type</label>
+                  <select 
+                    required
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    value={newExpense.type}
+                    onChange={(e) => setNewExpense({...newExpense, type: e.target.value as ExpenseType})}
+                  >
+                    <option value={ExpenseType.SALARY}>Salary</option>
+                    <option value={ExpenseType.SUPPLIES}>Supplies</option>
+                    <option value={ExpenseType.UTILITIES}>Utilities</option>
+                    <option value={ExpenseType.MAINTENANCE}>Maintenance</option>
+                    <option value={ExpenseType.OTHER}>Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Category</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    value={newExpense.category}
+                    onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}
+                    placeholder="Expense category"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Amount (UGX)</label>
+                  <input 
+                    required
+                    type="number" 
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                    value={newExpense.amount || ''}
+                    onChange={(e) => setNewExpense({...newExpense, amount: Number(e.target.value)})}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Date</label>
+                  <input 
+                    required
+                    type="date" 
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                    value={newExpense.date}
+                    onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Description</label>
+                  <textarea
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg min-h-[100px]"
+                    value={newExpense.description}
+                    onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
+                    placeholder="Enter a short description"
+                  />
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20"
+                >
+                  {editingExpense ? 'Update Expense' : 'Record Expense'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add New Type Modal */}
+      <AnimatePresence>
+        {showAddTypeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowAddTypeModal(false)}
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <h3 className="text-xl font-bold mb-6">Add New Type</h3>
+              <form onSubmit={(e) => { e.preventDefault(); handleAddNewType(); }} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Type ID (Auto-generated)</label>
+                  <input 
+                    type="text"
+                    disabled
+                    className="w-full px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500"
+                    value={`CUSTOM_${newTypeName.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`}
+                    placeholder="Auto-generated ID"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Type Name</label>
+                  <input 
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    value={newTypeName}
+                    onChange={(e) => setNewTypeName(e.target.value)}
+                    placeholder="Enter new type name..."
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                >
+                  Add Type
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add New Service Modal */}
+      <AnimatePresence>
+        {showAddServiceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowAddServiceModal(false)}
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <h3 className="text-xl font-bold mb-6">Add New Service</h3>
+              <form onSubmit={(e) => { e.preventDefault(); handleAddNewService(); }} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Service ID (Auto-generated)</label>
+                  <input 
+                    type="text"
+                    disabled
+                    className="w-full px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500"
+                    value={`SRV_${newServiceName.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`}
+                    placeholder="Auto-generated ID"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Service Name</label>
+                  <input 
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                    placeholder="Enter new service name..."
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                >
+                  Add Service
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add New Project Modal */}
+      <AnimatePresence>
+        {showAddProjectModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-xl shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowAddProjectModal(false)}
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <h3 className="text-xl font-bold mb-6">Add New Project</h3>
+              <form onSubmit={(e) => { e.preventDefault(); handleAddNewProject(); }} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Project ID (Auto-generated)</label>
+                  <input 
+                    type="text"
+                    disabled
+                    className="w-full px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500"
+                    value={newProjectData.projectId || `PRJ_${newProjectData.name.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`}
+                    placeholder="Auto-generated ID"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Project Name *</label>
+                  <input 
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    value={newProjectData.name}
+                    onChange={(e) => setNewProjectData({...newProjectData, name: e.target.value, projectId: newProjectData.projectId || `PRJ_${e.target.value.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`})}
+                    placeholder="Enter project name..."
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Description</label>
+                  <textarea 
+                    rows={3}
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    value={newProjectData.description}
+                    onChange={(e) => setNewProjectData({...newProjectData, description: e.target.value})}
+                    placeholder="Enter project description..."
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Target Amount (UGX)</label>
+                  <input 
+                    type="number"
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    value={newProjectData.targetAmount}
+                    onChange={(e) => setNewProjectData({...newProjectData, targetAmount: Number(e.target.value)})}
+                    placeholder="Enter target amount..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Start Date</label>
+                    <input 
+                      type="date"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                      value={newProjectData.startDate}
+                      onChange={(e) => setNewProjectData({...newProjectData, startDate: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">End Date</label>
+                    <input 
+                      type="date"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                      value={newProjectData.endDate}
+                      onChange={(e) => setNewProjectData({...newProjectData, endDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                >
+                  Add Project
                 </button>
               </form>
             </motion.div>
@@ -436,6 +1157,9 @@ export default function FinanceModule() {
                   <option value={TransactionType.OFFERING}>Offering</option>
                   <option value={TransactionType.DONATION}>Donation</option>
                   <option value={TransactionType.OTHER}>Other</option>
+                  {customTypes.map((customType) => (
+                    <option key={`filter-${customType.id}`} value={customType.name}>{customType.name}</option>
+                  ))}
                 </select>
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />

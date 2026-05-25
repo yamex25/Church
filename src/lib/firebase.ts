@@ -1,6 +1,17 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import {
+  getFirestore,
+  doc,
+  getDocFromServer,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  Timestamp,
+} from 'firebase/firestore';
+import { Expense, FinanceRecord, ExpenseType } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -65,3 +76,83 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+
+// Expense Management Functions
+export async function recordExpense(expense: Omit<Expense, 'id' | 'createdAt'>) {
+  try {
+    const expenseRef = collection(db, 'expenses');
+    const newExpense = {
+      ...expense,
+      createdAt: new Date().toISOString(),
+    };
+    const docRef = await addDoc(expenseRef, newExpense);
+    return { id: docRef.id, ...newExpense };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'expenses');
+  }
+}
+
+export async function getExpensesByDateRange(startDate: string, endDate: string) {
+  try {
+    const expenseRef = collection(db, 'expenses');
+    const q = query(
+      expenseRef,
+      where('date', '>=', startDate),
+      where('date', '<=', endDate)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'expenses');
+  }
+}
+
+export async function getExpensesByType(type: ExpenseType) {
+  try {
+    const expenseRef = collection(db, 'expenses');
+    const q = query(expenseRef, where('type', '==', type));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'expenses');
+  }
+}
+
+export async function getAllExpenses() {
+  try {
+    const expenseRef = collection(db, 'expenses');
+    const snapshot = await getDocs(expenseRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'expenses');
+  }
+}
+
+export async function getAllIncome() {
+  try {
+    const financeRef = collection(db, 'finance');
+    const snapshot = await getDocs(financeRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FinanceRecord));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'finance');
+  }
+}
+
+export async function calculateBalance() {
+  try {
+    const expenses = await getAllExpenses();
+    const income = await getAllIncome();
+
+    const totalExpenses = expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
+    const totalIncome = income?.reduce((sum, rec) => sum + rec.amount, 0) || 0;
+
+    return {
+      totalIncome,
+      totalExpenses,
+      balance: totalIncome - totalExpenses,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'balance-calculation');
+  }
+}
+

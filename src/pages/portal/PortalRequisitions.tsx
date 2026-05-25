@@ -40,17 +40,13 @@ export default function PortalRequisitions() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('Requisitions snapshot:', snapshot);
-      console.log('Snapshot docs:', snapshot.docs);
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      console.log('Mapped docs:', docs);
       setRequisitions(docs);
       setLoading(false);
     }, (error) => {
-      console.error('Requisitions query error:', error);
       handleFirestoreError(error, OperationType.LIST, 'requisitions');
     });
 
@@ -312,40 +308,52 @@ export default function PortalRequisitions() {
         </div>
         
         <div className="space-y-4">
-          {requisitions.map((req: any) => (
-            <div key={req.id} className="bg-white p-8 rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h4 className="text-xl font-black text-church-black mb-2">{req.itemName}</h4>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="flex items-center gap-2 text-church-gray">
-                      <Package className="w-4 h-4" /> Qty: {req.quantity}
-                    </span>
-                    <span className="flex items-center gap-2 text-church-gray">
-                      <Calculator className="w-4 h-4" /> UGX {req.total?.toLocaleString()}
-                    </span>
-                    <span className="flex items-center gap-2 text-church-gray">
-                      <Building className="w-4 h-4" /> {req.department}
-                    </span>
+          {loading ? (
+            <div className="bg-white p-8 rounded-[40px] border border-church-soft shadow-sm text-church-gray text-sm">
+              Loading your requisitions...
+            </div>
+          ) : requisitions.length === 0 ? (
+            <div className="bg-white p-8 rounded-[40px] border border-church-soft shadow-sm text-church-gray text-sm">
+              No requisitions found yet. Submit a request to see it listed here.
+            </div>
+          ) : (
+            requisitions.map((req: any) => (
+              <div key={req.id} className="bg-white p-8 rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-6 gap-4">
+                  <div>
+                    <h4 className="text-xl font-black text-church-black mb-2">{req.itemName}</h4>
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      <span className="flex items-center gap-2 text-church-gray">
+                        <Package className="w-4 h-4" /> Qty: {req.quantity}
+                      </span>
+                      <span className="flex items-center gap-2 text-church-gray">
+                        <Calculator className="w-4 h-4" /> UGX {req.total?.toLocaleString()}
+                      </span>
+                      <span className="flex items-center gap-2 text-church-gray">
+                        <Building className="w-4 h-4" /> {req.department}
+                      </span>
+                      <span className="flex items-center gap-2 text-church-gray">
+                        <Calendar className="w-4 h-4" /> {req.requestDate || req.createdAt?.toDate?.()?.toLocaleDateString?.() || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={cn(
+                    "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest",
+                    req.status === 'Pending' ? "bg-amber-100 text-amber-700" : 
+                    req.status === 'Approved' ? "bg-emerald-100 text-emerald-700" : 
+                    "bg-rose-100 text-rose-700"
+                  )}>
+                    {req.status}
                   </div>
                 </div>
-                <div className={cn(
-                  "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest",
-                  req.status === 'Pending' ? "bg-amber-100 text-amber-700" : 
-                  req.status === 'Approved' ? "bg-emerald-100 text-emerald-700" : 
-                  "bg-rose-100 text-rose-700"
-                )}>
-                  {req.status}
-                </div>
+                {req.stockable && (
+                  <div className="mb-4">
+                    <span className="text-xs font-bold text-church-blue bg-church-blue/5 px-3 py-1 rounded-full">Stockable Item</span>
+                  </div>
+                )}
               </div>
-              
-              {req.stockable && (
-                <div className="mb-4">
-                  <span className="text-xs font-bold text-church-blue bg-church-blue/5 px-3 py-1 rounded-full">Stockable Item</span>
-                </div>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
     </div>

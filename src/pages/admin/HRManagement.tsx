@@ -18,9 +18,9 @@ import {
   Printer,
   ChevronRight
 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { db, handleFirestoreError, OperationType, recordExpense } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
-import { Employee, PayrollRecord } from '@/src/types';
+import { Employee, PayrollRecord, ExpenseType } from '@/src/types';
 import { formatCurrency, cn, formatDate, downloadExcel } from '@/src/lib/utils';
 import { useAuth } from '@/src/components/AuthContext';
 
@@ -145,7 +145,7 @@ export default function HRManagement() {
         setSubmitting(false);
         return;
       } else if (emailExists) {
-        setError("This email is already registered to an existing employee. Each email can only be used once.");
+        setError("This email is already registered to Ian existing employee. Each email can only be used once.");
         setSubmitting(false);
         return;
       } else if (phoneExists) {
@@ -267,7 +267,7 @@ export default function HRManagement() {
       const newBalance = Math.round(currentBalance - paymentAmount);
       const finalStatus = newBalance <= 10 ? 'Paid' : 'Partial'; // 10 UGX threshold for settling
 
-      await addDoc(collection(db, 'payroll'), {
+      const payrollDocRef = await addDoc(collection(db, 'payroll'), {
         employeeId: emp.id,
         employeeName: emp.name,
         totalSalary: Math.round(Number(emp.salary)),
@@ -280,6 +280,18 @@ export default function HRManagement() {
         recordedBy: user.uid,
         createdAt: serverTimestamp()
       });
+
+      // Record expense for payroll payment
+      await recordExpense({
+        type: ExpenseType.SALARY,
+        category: 'Payroll',
+        description: `Salary payment for ${emp.name} - ${newPayroll.month}`,
+        amount: Math.round(Number(paymentAmount)),
+        date: new Date().toISOString().split('T')[0],
+        relatedId: payrollDocRef.id,
+        recordedBy: user.uid,
+      });
+      console.log(`✓ Expense automatically recorded - Salary: UGX ${paymentAmount.toLocaleString()} for ${emp.name}`);
 
       setShowAddPayroll(false);
       setNewPayroll({
@@ -319,7 +331,7 @@ export default function HRManagement() {
 
         if (currentBalance <= 0) continue; // Already fully paid
 
-        await addDoc(collection(db, 'payroll'), {
+        const payrollDocRef = await addDoc(collection(db, 'payroll'), {
           employeeId: emp.id,
           employeeName: emp.name,
           totalSalary: Number(emp.salary),
@@ -331,6 +343,17 @@ export default function HRManagement() {
           paymentMethod: 'Bank Transfer',
           recordedBy: user?.uid,
           createdAt: serverTimestamp()
+        });
+
+        // Record expense automatically for bulk payroll
+        await recordExpense({
+          type: ExpenseType.SALARY,
+          category: 'Payroll',
+          description: `Salary payment for ${emp.name} - ${month}`,
+          amount: Math.round(Number(currentBalance)),
+          date: new Date().toISOString().split('T')[0],
+          relatedId: payrollDocRef.id,
+          recordedBy: user?.uid,
         });
         successCount++;
       }

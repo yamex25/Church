@@ -55,11 +55,38 @@ export enum TransactionType {
   OTHER = 'Other',
 }
 
+export enum ExpenseType {
+  SALARY = 'Salary',
+  REQUISITION = 'Requisition',
+  UTILITIES = 'Utilities',
+  MAINTENANCE = 'Maintenance',
+  SUPPLIES = 'Supplies',
+  TRANSPORT = 'Transport',
+  FUEL = 'Fuel',
+  COMMUNICATION = 'Communication',
+  CLEANING = 'Cleaning',
+  SECURITY = 'Security',
+  HOSPITALITY = 'Hospitality',
+  OTHER = 'Other',
+}
+
+export interface Expense {
+  id: string;
+  type: ExpenseType;
+  category: string;
+  description: string;
+  amount: number;
+  date: string;
+  relatedId?: string;
+  recordedBy: string;
+  createdAt: string;
+}
+
 export interface FinanceRecord {
   id: string;
   memberId?: string;
   memberName?: string;
-  type: TransactionType;
+  type: TransactionType | string;
   amount: number;
   currency: string;
   date: string;
@@ -144,6 +171,7 @@ export interface Pledge {
   memberName: string;
   amount: number;
   project: string;
+  projectId?: string;
   date: string;
   status: 'Pending' | 'Fulfilled';
   recordedBy: string;

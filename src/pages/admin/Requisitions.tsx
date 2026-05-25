@@ -13,10 +13,10 @@ import {
   ArrowRight,
   X
 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { db, handleFirestoreError, OperationType, recordExpense } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/src/components/AuthContext';
-import { Requisition, RequisitionStatus, UserRole, Employee } from '@/src/types';
+import { Requisition, RequisitionStatus, UserRole, Employee, ExpenseType } from '@/src/types';
 import { cn, formatCurrency, formatDate } from '@/src/lib/utils';
 
 export default function Requisitions() {
@@ -135,6 +135,26 @@ export default function Requisitions() {
 
       // If approved, handle finance and stockable items
       if (status === RequisitionStatus.APPROVED && requisition) {
+        // Record expense for requisition - AUTOMATIC when approved
+        const expenseAmount = requisition.total || requisition.estimatedCost || 0;
+        if (expenseAmount > 0) {
+          try {
+            await recordExpense({
+              type: ExpenseType.REQUISITION,
+              category: requisition.department,
+              description: `Requisition: ${requisition.itemName || requisition.items} - ${requisition.purpose || 'Department requisition'}`,
+              amount: expenseAmount,
+              date: new Date().toISOString().split('T')[0],
+              relatedId: id,
+              recordedBy: user.uid,
+            });
+            console.log(`✓ Expense automatically recorded for requisition approval: UGX ${expenseAmount.toLocaleString()}`);
+          } catch (expenseError) {
+            console.error('✗ Error recording expense for requisition:', expenseError);
+            // Don't fail the entire requisition approval if expense fails
+          }
+        }
+
         // Update finance budget (reduce by total amount)
         if (requisition.total) {
           try {
@@ -142,8 +162,8 @@ export default function Requisitions() {
             const financeSnapshot = await getDocs(financeQuery);
             if (!financeSnapshot.empty) {
               const latestFinance = financeSnapshot.docs[0].data();
-              const newBalance = (latestBalance.balance || 0) - requisition.total;
-              
+              const newBalance = (latestFinance.balance || 0) - requisition.total;
+
               await updateDoc(doc(db, 'finance', financeSnapshot.docs[0].id), {
                 balance: newBalance,
                 updatedAt: serverTimestamp()

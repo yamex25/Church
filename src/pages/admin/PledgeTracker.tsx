@@ -23,7 +23,7 @@ import { cn, formatCurrency, formatDate, downloadExcel } from '@/src/lib/utils';
 export default function PledgeTracker() {
   const { user } = useAuth();
   const [pledges, setPledges] = useState<Pledge[]>([]);
-  const [projects, setProjects] = useState<{id: string, name: string, targetAmount?: number, status?: string}[]>([]);
+  const [projects, setProjects] = useState<{id: string, name: string, targetAmount?: number, status?: string, projectId?: string}[]>([]);
   const [projectNameInput, setProjectNameInput] = useState('');
   const [showProjectSuggestions, setShowProjectSuggestions] = useState(false);
   const [filteredProjects, setFilteredProjects] = useState<{id: string, name: string, targetAmount?: number, status?: string}[]>([]);
@@ -36,14 +36,17 @@ export default function PledgeTracker() {
   const [memberNameInput, setMemberNameInput] = useState('');
   const [showMemberSuggestions, setShowMemberSuggestions] = useState(false);
   const [showProjectForm, setShowProjectForm] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '' });
+  const [newProject, setNewProject] = useState({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', projectId: '' });
   const [filteredMembers, setFilteredMembers] = useState<{id: string, name: string}[]>([]);
   const [selectedMember, setSelectedMember] = useState<{id: string, name: string} | null>(null);
   
+  const generateProjectId = (name: string) => `PRJ_${name.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`;
+
   const [newPledge, setNewPledge] = useState({
     memberName: '',
     amount: 0,
     project: 'Sanctuary Project',
+    projectId: '',
     date: new Date().toISOString().split('T')[0],
     status: 'Pending' as 'Pending' | 'Fulfilled'
   });
@@ -65,6 +68,7 @@ export default function PledgeTracker() {
     const unsubscribeProjects = onSnapshot(qProjects, (snapshot) => {
       const projectDocs = snapshot.docs.map(doc => ({ 
         id: doc.id, 
+        projectId: doc.data().projectId || doc.id,
         name: doc.data().name, 
         targetAmount: doc.data().targetAmount,
         status: doc.data().status || 'Active'
@@ -91,19 +95,19 @@ export default function PledgeTracker() {
       // Check if exact match exists
       const exactMatch = projects.find(p => p.name.toLowerCase() === value.toLowerCase().trim());
       if (exactMatch) {
-        setNewPledge({...newPledge, project: exactMatch.name});
+        setNewPledge({...newPledge, project: exactMatch.name, projectId: exactMatch.projectId || exactMatch.id});
       } else {
-        setNewPledge({...newPledge, project: value.trim()});
+        setNewPledge({...newPledge, project: value.trim(), projectId: ''});
       }
     } else {
       setFilteredProjects([]);
       setShowProjectSuggestions(false);
-      setNewPledge({...newPledge, project: ''});
+      setNewPledge({...newPledge, project: '', projectId: ''});
     }
   };
 
-  const selectProject = (project: {id: string, name: string, targetAmount?: number, status?: string}) => {
-    setNewPledge({...newPledge, project: project.name});
+  const selectProject = (project: {id: string, name: string, targetAmount?: number, status?: string, projectId?: string}) => {
+    setNewPledge({...newPledge, project: project.name, projectId: project.projectId || project.id});
     setProjectNameInput(project.name);
     setShowProjectSuggestions(false);
     setFilteredProjects([]);
@@ -111,7 +115,7 @@ export default function PledgeTracker() {
 
   useEffect(() => {
     const unsubscribeProjects = onSnapshot(query(collection(db, 'projects'), orderBy('name', 'asc')), (snapshot) => {
-      setProjects(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+      setProjects(snapshot.docs.map(doc => ({ id: doc.id, projectId: doc.data().projectId || doc.id, name: doc.data().name })));
     });
     return () => unsubscribeProjects();
   }, []);
@@ -187,6 +191,7 @@ export default function PledgeTracker() {
     try {
       await addDoc(collection(db, 'pledges'), {
         ...newPledge,
+        projectId: newPledge.projectId || undefined,
         recordedBy: user.displayName || user.email || 'Staff',
         createdAt: serverTimestamp()
       });
@@ -254,7 +259,10 @@ export default function PledgeTracker() {
             Record Pledge
           </button>
           <button 
-            onClick={() => setShowProjectForm(true)}
+            onClick={() => {
+              setNewProject({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', projectId: generateProjectId('PROJECT') });
+              setShowProjectForm(true);
+            }}
             className="flex items-center gap-3 bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-emerald-500/20"
           >
             <Target className="w-4 h-4" />
@@ -462,7 +470,9 @@ export default function PledgeTracker() {
                 
                 try {
                   console.log("Creating project with data:", newProject);
+                  const projectId = newProject.projectId || generateProjectId(newProject.name || 'PROJECT');
                   const projectData = {
+                    projectId,
                     name: newProject.name.trim(),
                     description: newProject.description.trim(),
                     targetAmount: newProject.targetAmount || 0,
@@ -478,7 +488,7 @@ export default function PledgeTracker() {
                   console.log("Project created with ID:", docRef.id);
                   
                   setShowProjectForm(false);
-                  setNewProject({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '' });
+                  setNewProject({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', projectId: '' });
                   alert(`Project "${newProject.name.trim()}" created successfully!`);
                 } catch (error) {
                   console.error("Project Creation Error:", error);
@@ -487,13 +497,23 @@ export default function PledgeTracker() {
                 }
               }} className="space-y-4">
                 <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Project ID</label>
+                  <input 
+                    type="text" 
+                    disabled 
+                    className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent text-church-gray focus:border-church-blue/20 transition-all font-bold text-sm" 
+                    value={newProject.projectId || generateProjectId(newProject.name || 'PROJECT')} 
+                    placeholder="Auto-generated project ID"
+                  />
+                </div>
+                <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Project Name *</label>
                   <input 
                     required 
                     type="text" 
                     className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" 
                     value={newProject.name} 
-                    onChange={e => setNewProject({...newProject, name: e.target.value})}
+                    onChange={e => setNewProject({...newProject, name: e.target.value, projectId: newProject.projectId || generateProjectId(e.target.value)})}
                   />
                 </div>
                 <div className="space-y-1">
@@ -548,7 +568,10 @@ export default function PledgeTracker() {
         <Search className="w-5 h-5 text-church-blue ml-4" />
         <input type="text" placeholder="Search pledges by name or project..." className="flex-1 bg-transparent border-none focus:ring-0 font-bold text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         <button 
-          onClick={() => setShowProjectForm(true)}
+          onClick={() => {
+            setNewProject({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', projectId: generateProjectId('PROJECT') });
+            setShowProjectForm(true);
+          }}
           className="flex items-center gap-3 bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-emerald-500/20"
         >
           <Target className="w-4 h-4" />

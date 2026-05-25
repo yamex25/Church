@@ -20,6 +20,7 @@ import VisitorManagement from '@/src/pages/admin/VisitorManagement';
 import AttendanceTracker from '@/src/pages/admin/AttendanceTracker';
 import AssetInventory from '@/src/pages/admin/AssetInventory';
 import HRManagement from '@/src/pages/admin/HRManagement';
+import DailyExpenseModule from '@/src/pages/admin/DailyExpenseModule';
 import MemberPortal from '@/src/pages/portal/MemberPortal';
 import PortalProfile from '@/src/pages/portal/PortalProfile';
 import PortalContributions from '@/src/pages/portal/PortalContributions';
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="attendance" element={<AttendanceTracker />} />
             <Route path="attendance-scan" element={<AttendanceScan />} />
             <Route path="finance" element={<FinanceModule />} />
+            <Route path="daily-expenses" element={<DailyExpenseModule />} />
             <Route path="hr" element={<HRManagement />} />
             <Route path="events" element={<EventsList />} />
             <Route path="prayer-requests" element={<PrayerRequests />} />

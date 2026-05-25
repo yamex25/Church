@@ -241,26 +241,20 @@ export default function MemberList() {
   const [newMember, setNewMember] = useState(initialMemberState);
 
   useEffect(() => {
-    console.log('Members useEffect running, user:', user);
     const q = query(collection(db, 'members'), orderBy('createdAt', 'desc'));
-    console.log('Members query created:', q);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('Members snapshot received:', snapshot);
-      console.log('Snapshot docs length:', snapshot.docs.length);
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Member[];
-      console.log('Mapped members docs:', docs);
       setMembers(docs);
       setLoading(false);
     }, (error) => {
-      console.error('Members query error:', error);
       handleFirestoreError(error, OperationType.LIST, 'members');
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     const qDepts = query(collection(db, 'departments'), orderBy('name', 'asc'));
@@ -280,6 +274,11 @@ export default function MemberList() {
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!newMember.name.trim() || !newMember.email.trim() || !newMember.phone.trim() || !newMember.dateOfBirth) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
     // Duplicate check
     if (!editingMember && members.some(m => m.phone === newMember.phone)) {
       alert("A member with this phone number is already registered.");
@@ -291,7 +290,7 @@ export default function MemberList() {
         await updateDoc(doc(db, 'members', editingMember.id), {
           ...newMember,
           updatedAt: serverTimestamp(),
-          updatedBy: user.displayName || user.email || 'Admin'
+          updatedBy: user?.displayName || user?.email || 'Admin'
         });
         setEditingMember(null);
         alert("Member updated successfully!");
@@ -363,7 +362,14 @@ export default function MemberList() {
   };
 
   const handleExport = () => {
-    downloadExcel(members, `graceflow_members_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const exportData = members.map((member, index) => ({
+      ID: index + 1,
+      Tribe: member.tribe || '',
+      Residence: `${member.residence?.division || ''} ${member.residence?.parish || ''} ${member.residence?.village || ''}`.trim(),
+      Categories: member.categories?.join(', ') || '',
+      Phone: member.phone || ''
+    }));
+    downloadExcel(exportData, `graceflow_members_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
@@ -688,74 +694,81 @@ export default function MemberList() {
             </thead>
             <tbody className="divide-y divide-church-soft">
               {members.filter(m => {
-                const matchesSearch = m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  m.tribe?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  m.residence?.village?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  m.residence?.division?.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesSearch = (m.name && m.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (m.tribe && m.tribe.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (m.residence?.village && m.residence.village.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (m.residence?.division && m.residence.division.toLowerCase().includes(searchTerm.toLowerCase()));
                 
-                const matchesFilter = filterMinistry === 'All' || m.categories.includes(filterMinistry);
+                const matchesFilter = filterMinistry === 'All' || (m.categories && m.categories.includes(filterMinistry));
                 
                 return matchesSearch && matchesFilter;
-              }).map((member) => (
-                <tr key={member.id} className="hover:bg-church-blue/[0.02] transition-colors group text-center">
-                  <td className="px-6 py-6 text-left">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-church-yellow border-2 border-church-yellow-dark/20 flex items-center justify-center text-church-black font-black text-[10px] shadow-sm shrink-0">
-                        {member.name.split(' ').map(n => n[0]).join('').substring(0,2)}
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-bold text-sm text-church-black truncate">{member.name}</span>
-                        <span className="text-[10px] text-church-gray font-medium truncate">{member.phone}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-6 text-sm font-bold text-church-black">
-                    {calculateAge(member.dateOfBirth)}
-                  </td>
-                  <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
-                    {member.tribe || 'N/A'}
-                  </td>
-                  <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
-                    {member.sex || 'N/A'}
-                  </td>
-                  <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
-                    {member.maritalStatus || 'N/A'}
-                  </td>
-                  <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
-                    {member.residence?.village || 'N/A'}
-                  </td>
-                  <td className="px-6 py-6">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-church-blue bg-church-blue/5 px-3 py-1.5 rounded-lg border border-church-blue/10 shrink-0">{member.categories[0]}</span>
-                  </td>
-                  <td className="px-6 py-6">
-                    <span className={cn(
-                      "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm shrink-0",
-                      member.membershipStatus === MembershipStatus.ACTIVE ? "bg-church-blue text-white border-church-blue" : 
-                      member.membershipStatus === MembershipStatus.LEFT ? "bg-amber-100 text-amber-700 border-amber-200" : 
-                      member.membershipStatus === MembershipStatus.DIED ? "bg-slate-100 text-slate-700 border-slate-200" : 
-                      "bg-white text-church-gray border-church-blue/10"
-                    )}>
-                      {member.membershipStatus}
-                    </span>
-                  </td>
-                  <td className="px-6 py-6 text-right">
-                    <div className="flex items-center justify-center gap-2">
-                        <button 
-                          onClick={() => handleEdit(member)}
-                          className="p-2 text-church-blue hover:bg-church-blue/10 rounded-lg transition-all"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                       <button 
-                         onClick={() => handleDelete(member.id)}
-                         className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                       >
-                         <X className="w-4 h-4" />
-                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              }).map((member) => {
+                try {
+                  return (
+                    <tr key={member.id} className="hover:bg-church-blue/[0.02] transition-colors group text-center">
+                      <td className="px-6 py-6 text-left">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-church-yellow border-2 border-church-yellow-dark/20 flex items-center justify-center text-church-black font-black text-[10px] shadow-sm shrink-0">
+                            {(member.name || 'U').split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-sm text-church-black truncate">{member.name || 'Unknown'}</span>
+                            <span className="text-[10px] text-church-gray font-medium truncate">{member.phone || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-6 text-sm font-bold text-church-black">
+                        {member.dateOfBirth ? calculateAge(member.dateOfBirth) : 'N/A'}
+                      </td>
+                      <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
+                        {member.tribe || 'N/A'}
+                      </td>
+                      <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
+                        {member.sex || 'N/A'}
+                      </td>
+                      <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
+                        {member.maritalStatus || 'N/A'}
+                      </td>
+                      <td className="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-church-gray">
+                        {member.residence?.village || 'N/A'}
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-church-blue bg-church-blue/5 px-3 py-1.5 rounded-lg border border-church-blue/10 shrink-0">{member.categories?.[0] || 'General'}</span>
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className={cn(
+                          "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm shrink-0",
+                          member.membershipStatus === MembershipStatus.ACTIVE ? "bg-church-blue text-white border-church-blue" : 
+                          member.membershipStatus === MembershipStatus.LEFT ? "bg-amber-100 text-amber-700 border-amber-200" : 
+                          member.membershipStatus === MembershipStatus.DIED ? "bg-slate-100 text-slate-700 border-slate-200" : 
+                          "bg-white text-church-gray border-church-blue/10"
+                        )}>
+                          {member.membershipStatus || 'Unknown'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-6 text-right">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => handleEdit(member)}
+                            className="p-2 text-church-blue hover:bg-church-blue/10 rounded-lg transition-all"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(member.id!)}
+                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                } catch (err) {
+                  console.error('Error rendering member:', member, err);
+                  return null;
+                }
+              })}
             </tbody>
           </table>
         </div>
