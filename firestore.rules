@@ -100,11 +100,6 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    // --- Requisitions ---
-    match /requisitions/{reqId} {
-      allow read, write: if isSignedIn();
-    }
-
     // --- Admins (Role verification) ---
     match /admins/{adminId} {
       allow read: if isSignedIn();
