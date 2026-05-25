@@ -469,7 +469,6 @@ export default function PledgeTracker() {
                 }
                 
                 try {
-                  console.log("Creating project with data:", newProject);
                   const projectId = newProject.projectId || generateProjectId(newProject.name || 'PROJECT');
                   const projectData = {
                     projectId,
@@ -485,7 +484,7 @@ export default function PledgeTracker() {
                   };
                   
                   const docRef = await addDoc(collection(db, 'projects'), projectData);
-                  console.log("Project created with ID:", docRef.id);
+
                   
                   setShowProjectForm(false);
                   setNewProject({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', projectId: '' });

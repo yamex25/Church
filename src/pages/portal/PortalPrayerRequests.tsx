@@ -50,8 +50,6 @@ export default function PortalPrayerRequests() {
   }, [user]);
   
   const handleSubmit = async () => {
-    console.log('Submit button clicked');
-    
     if (!newRequest.trim()) {
       alert("Please enter your prayer request.");
       return;
@@ -62,12 +60,11 @@ export default function PortalPrayerRequests() {
       return;
     }
 
-    console.log('Submitting prayer request for:', user.displayName);
-    
     try {
       const requestData = {
+        memberId: user.uid,
         memberName: user.displayName || 'Anonymous',
-        requestText: newRequest.trim(),
+        requestText: newRequest.trim().slice(0, 5000),
         status: 'Pending',
         isPrivate: isPrivate,
         visibility: visibility,
@@ -76,10 +73,7 @@ export default function PortalPrayerRequests() {
         updatedAt: serverTimestamp()
       };
 
-      console.log('Request data:', requestData);
-      
-      const docRef = await addDoc(collection(db, 'prayerRequests'), requestData);
-      console.log('Prayer request submitted with ID:', docRef.id);
+      await addDoc(collection(db, 'prayerRequests'), requestData);
       
       // Reset form
       setNewRequest('');
@@ -89,7 +83,7 @@ export default function PortalPrayerRequests() {
       
       alert("Your spiritual intention has been shared with the selected intercessory layer.");
     } catch (error) {
-      console.error('Error submitting prayer request:', error);
+
       alert("There was an error submitting your prayer request. Please try again.");
     }
   };
@@ -202,19 +196,7 @@ export default function PortalPrayerRequests() {
                   Submit to Wall
                 </button>
               </div>
-              {/* Debug button - remove later */}
-              <button 
-                type="button"
-                onClick={() => {
-                  console.log('User:', user);
-                  console.log('DB available:', !!db);
-                  console.log('New request:', newRequest);
-                  alert(`Debug: User ${user?.displayName ? 'exists' : 'null'}, DB ${db ? 'exists' : 'null'}, Request length: ${newRequest.length}`);
-                }}
-                className="w-full mt-4 p-2 bg-red-100 text-red-600 rounded text-xs"
-              >
-                Debug Info
-              </button>
+
             </form>
             <div className="absolute top-0 right-0 w-64 h-64 bg-church-yellow/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           </motion.div>

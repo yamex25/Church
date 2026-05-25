@@ -40,16 +40,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          console.log("Auth State: User logged in", firebaseUser.uid);
+          // User authenticated
           // Sync with Firestore
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           
           if (userDoc.exists()) {
-            console.log("Auth State: User document found");
+
             const userData = userDoc.data() as AppUser;
             // Force Admin for bootstrap email if not already
             if (firebaseUser.email === BOOTSTRAP_ADMIN && userData.role !== UserRole.ADMIN) {
-              console.log("Auth State: Boosting to Admin", BOOTSTRAP_ADMIN);
+
               const updatedUser = { ...userData, role: UserRole.ADMIN };
               await setDoc(doc(db, 'users', firebaseUser.uid), updatedUser);
               setUser(updatedUser);
@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setUser(userData);
             }
           } else {
-            console.log("Auth State: Creating new user document");
+
             // New user defaults to Member, unless bootstrap admin
             const role = firebaseUser.email === BOOTSTRAP_ADMIN ? UserRole.ADMIN : UserRole.MEMBER;
             const newUser: AppUser = {
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(newUser);
           }
         } else {
-          console.log("Auth State: No user");
+
           setUser(null);
         }
       } catch (error) {
@@ -106,12 +106,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Roles access checks
-  // TEMPORARY: Grant all users access for vetting purposes
-  const isAdmin = !!user; 
+  const ADMIN_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.PASTOR];
+  const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
   const isMember = !!user;
-
-  console.log("Auth State:", { uid: user?.uid, role: user?.role, isAdmin, isMember });
 
   return (
     <AuthContext.Provider value={{ user, loading, isAdmin, isMember, signInWithGoogle, logout }}>

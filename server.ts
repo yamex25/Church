@@ -19,10 +19,18 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // Bulk SMS Simulation
+  // Bulk SMS Simulation (requires auth header in production)
   app.post("/api/sms/send", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
     const { recipients, message } = req.body;
-    console.log(`SMS Sim: ${recipients.length} recipients`);
+    if (!Array.isArray(recipients) || typeof message !== "string" || message.length === 0) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
     res.json({ success: true });
   });
 

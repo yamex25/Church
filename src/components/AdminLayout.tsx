@@ -41,8 +41,9 @@ export default function AdminLayout() {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  // During vetting phase, everyone sees all items
-  const filteredItems = sidebarItems;
+  const filteredItems = sidebarItems.filter(
+    item => !user?.role || item.roles.includes(user.role as UserRole)
+  );
 
   return (
     <div className="flex h-screen bg-white font-sans text-church-black overflow-hidden">

@@ -1,8 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 0. Global Safety Net - Block access to any document not explicitly matched
-    // Note: This will be applied after all specific matches are checked
 
     // Global Helpers
     function isSignedIn() {
@@ -35,99 +33,123 @@ service cloud.firestore {
 
     // --- Users Collection ---
     match /users/{userId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // --- Members Collection ---
     match /members/{memberId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isStaff();
     }
 
     // --- Finance Collection ---
     match /finance/{recordId} {
-      allow read, write: if isSignedIn();
+      allow read: if isStaff() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
     }
 
     // --- Expenses Collection ---
     match /expenses/{expenseId} {
-      allow read, write: if isSignedIn();
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
     // --- Prayer Requests ---
     match /prayerRequests/{requestId} {
-      allow read, write: if isSignedIn();
-      allow create: if isSignedIn() && request.auth != null;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.memberId == request.auth.uid
+                    && request.resource.data.requestText.size() < 5000;
+      allow update: if isSignedIn() && resource.data.memberId == request.auth.uid;
+      allow delete: if isAdmin();
     }
 
     // --- Requisitions ---
     match /requisitions/{reqId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isStaff();
+      allow delete: if isAdmin();
     }
 
     // --- Pledges ---
     match /pledges/{pledgeId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isStaff();
     }
 
     // --- Projects ---
     match /projects/{projectId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // --- Services ---
     match /services/{serviceId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // --- Finance Types ---
     match /financeTypes/{typeId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // --- Visitors ---
     match /visitors/{visitorId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isStaff();
     }
 
     // --- Broadcasts ---
     match /broadcasts/{broadcastId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // --- Assets ---
     match /assets/{assetId} {
-      allow read, write: if isSignedIn();
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
     // --- Events ---
     match /events/{eventId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isStaff();
     }
 
     // --- Attendance ---
     match /attendance/{atId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isStaff();
     }
 
     // --- Employees (HR) ---
     match /employees/{empId} {
-      allow read, write: if isSignedIn();
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
     // --- Payroll ---
     match /payroll/{payId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isAdmin();
     }
 
     // --- Admins (Role verification) ---
     match /admins/{adminId} {
       allow read: if isSignedIn();
     }
-    
+
     // --- Departments ---
     match /departments/{deptId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
+
   }
 }

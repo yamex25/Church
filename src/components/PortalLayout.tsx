@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { 
   Home, 
@@ -21,7 +21,6 @@ const navItems = [
   { icon: Heart, label: 'Prayer', path: '/portal/prayer-requests' },
   { icon: FileText, label: 'Requisitions', path: '/portal/requisitions' },
   { icon: CalendarDays, label: 'Events', path: '/portal/events' },
-  { icon: Church, label: 'Admin Panel', path: '/admin' }, // Added for vetting
 ];
 
 export default function PortalLayout() {
