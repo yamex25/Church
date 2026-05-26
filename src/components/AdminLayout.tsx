@@ -35,6 +35,7 @@ const sidebarItems = [
   { icon: UserCheck, label: 'Visitor Care', path: '/admin/visitors', roles: [UserRole.ADMIN, UserRole.PASTOR, UserRole.SECRETARY] },
   { icon: Package, label: 'Assets & Inventory', path: '/admin/assets', roles: [UserRole.ADMIN, UserRole.TREASURER] },
   { icon: Settings, label: 'Communications', path: '/admin/communications', roles: [UserRole.ADMIN, UserRole.PASTOR] },
+  { icon: Settings, label: 'Configurations', path: '/admin/configurations', roles: [UserRole.ADMIN] },
 ];
 
 export default function AdminLayout() {

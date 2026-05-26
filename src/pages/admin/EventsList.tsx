@@ -11,6 +11,7 @@ import {
   X,
   Image as ImageIcon
 } from 'lucide-react';
+import { updateDoc, doc } from 'firebase/firestore';
 import { cn, formatDate } from '@/src/lib/utils';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -51,6 +52,21 @@ export default function EventsList() {
     return () => unsubscribe();
   }, []);
 
+  const cancelEvent = async (eventId: string) => {
+    const ok = window.confirm('Are you sure you want to cancel this event? This will mark it as cancelled for attendees.');
+    if (!ok) return;
+    try {
+      await updateDoc(doc(db, 'events', eventId), {
+        status: 'cancelled',
+        cancelledAt: serverTimestamp()
+      });
+      alert('Event cancelled');
+    } catch (err: any) {
+      console.error('Failed to cancel event', err);
+      alert('Failed to cancel event: ' + (err.message || err));
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -85,15 +101,15 @@ export default function EventsList() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-church-blue text-white p-6 rounded-2xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Church Events</h2>
-          <p className="text-slate-500 text-sm">Schedule and manage services, programs, and outreach activities.</p>
+          <h2 className="text-2xl font-bold text-white">Church Events</h2>
+          <p className="text-church-yellow text-sm">Schedule and manage services, programs, and outreach activities.</p>
         </div>
         <button 
           onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm self-start md:self-center"
+          className="flex items-center gap-2 bg-church-yellow text-church-blue px-4 py-2 rounded-xl font-semibold hover:opacity-90 transition-colors shadow-sm self-start md:self-center"
         >
           <Plus className="w-4 h-4" />
           Create Event
@@ -204,47 +220,118 @@ export default function EventsList() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {events.filter(e => e.title.toLowerCase().includes(searchTerm.toLowerCase())).map((event) => (
-          <motion.div 
-            key={event.id}
-            whileHover={{ y: -4 }}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group"
-          >
-            <div className="h-32 bg-slate-100 flex items-center justify-center relative">
-              <ImageIcon className="text-slate-300 w-8 h-8" />
-              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-slate-600 shadow-sm border border-white/50">
-                {event.type}
-              </div>
-              <button className="absolute top-4 right-4 p-1.5 bg-white/90 backdrop-blur rounded-lg text-slate-400 hover:text-slate-900 transition-colors opacity-0 group-hover:opacity-100 shadow-sm border border-white/50">
-                <MoreVertical className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-600 transition-colors">{event.title}</h3>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 font-medium">
-                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(event.date)}</span>
-                    <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {event.time}</span>
+      <div className="space-y-6">
+        {/* Upcoming Events */}
+        <div>
+          <h3 className="text-lg font-bold text-church-blue mb-3">Upcoming Events</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            {events.filter(e => e.title.toLowerCase().includes(searchTerm.toLowerCase())).filter(e => e.status !== 'cancelled' && new Date(e.date) >= new Date(new Date().toISOString().split('T')[0])).map((event) => (
+              <motion.div 
+                key={event.id}
+                whileHover={{ y: -4 }}
+                className="bg-white rounded-2xl border border-church-blue/10 shadow-sm overflow-hidden group"
+              >
+                <div className="h-32 bg-church-blue/5 flex items-center justify-center relative">
+                  <ImageIcon className="text-church-blue/40 w-8 h-8" />
+                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-church-blue shadow-sm border border-white/50">
+                    {event.type}
                   </div>
                 </div>
-              </div>
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900 group-hover:text-church-blue transition-colors">{event.title}</h3>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 font-medium">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(event.date)}</span>
+                        <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {event.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <MapPin className="w-3.5 h-3.5" />
+                      {event.location}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-church-blue bg-church-blue/10 px-2 py-1 rounded-md">
+                        <Users className="w-3.5 h-3.5" />
+                        {event.attendees} Attending
+                      </div>
+                      <button onClick={() => cancelEvent(event.id)} className="text-xs font-semibold text-church-blue bg-church-yellow/90 px-3 py-1 rounded-md shadow-sm hover:opacity-90">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {event.location}
+        {/* Past Events */}
+        <div>
+          <h3 className="text-lg font-bold text-church-blue mb-3">Past Events</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            {events.filter(e => e.title.toLowerCase().includes(searchTerm.toLowerCase())).filter(e => e.status !== 'cancelled' && new Date(e.date) < new Date(new Date().toISOString().split('T')[0])).map((event) => (
+              <motion.div key={event.id} whileHover={{ y: -4 }} className="bg-white rounded-2xl border border-church-blue/10 shadow-sm overflow-hidden group">
+                <div className="h-32 bg-church-blue/5 flex items-center justify-center relative">
+                  <ImageIcon className="text-church-blue/40 w-8 h-8" />
+                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-church-blue shadow-sm border border-white/50">
+                    {event.type}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
-                   <Users className="w-3.5 h-3.5" />
-                   {event.attendees} Attending
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900">{event.title}</h3>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 font-medium">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(event.date)}</span>
+                        <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {event.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <MapPin className="w-3.5 h-3.5" />
+                      {event.location}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-church-blue bg-church-blue/10 px-2 py-1 rounded-md">
+                       <Users className="w-3.5 h-3.5" />
+                       {event.attendees} Attended
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cancelled Events */}
+        <div>
+          <h3 className="text-lg font-bold text-church-blue mb-3">Cancelled Events</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            {events.filter(e => e.status === 'cancelled').map((event) => (
+              <motion.div key={event.id} whileHover={{ y: -4 }} className="bg-white rounded-2xl border border-church-blue/10 shadow-sm overflow-hidden group opacity-80">
+                <div className="h-32 bg-church-yellow/10 flex items-center justify-center relative">
+                  <ImageIcon className="text-church-yellow/60 w-8 h-8" />
+                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-church-blue shadow-sm border border-white/50">
+                    {event.type}
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900">{event.title}</h3>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 font-medium">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(event.date)}</span>
+                        <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {event.time}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm font-bold text-church-yellow">Cancelled</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

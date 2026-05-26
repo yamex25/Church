@@ -15,6 +15,7 @@ import EventsList from '@/src/pages/admin/EventsList';
 import PrayerRequests from '@/src/pages/admin/PrayerRequests';
 import Requisitions from '@/src/pages/admin/Requisitions';
 import Communications from '@/src/pages/admin/Communications';
+import Configurations from '@/src/pages/admin/Configurations';
 import PledgeTracker from '@/src/pages/admin/PledgeTracker';
 import VisitorManagement from '@/src/pages/admin/VisitorManagement';
 import AttendanceTracker from '@/src/pages/admin/AttendanceTracker';
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="prayer-requests" element={<PrayerRequests />} />
             <Route path="requisitions" element={<Requisitions />} />
             <Route path="communications" element={<Communications />} />
+            <Route path="configurations" element={<Configurations />} />
             <Route path="pledges" element={<PledgeTracker />} />
             <Route path="visitors" element={<VisitorManagement />} />
             <Route path="assets" element={<AssetInventory />} />

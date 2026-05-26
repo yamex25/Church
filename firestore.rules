@@ -102,7 +102,12 @@ service cloud.firestore {
 
     // --- Events ---
     match /events/{eventId} {
-      allow read, write: if isSignedIn();
+      // Allow any signed-in user to read events
+      allow read: if isSignedIn();
+
+      // Only staff (Admin, Pastor, Treasurer, Secretary, Department Leader) or the bootstrap admin
+      // can create, update or delete events.
+      allow create, update, delete: if isStaff();
     }
 
     // --- Attendance ---
@@ -128,6 +133,12 @@ service cloud.firestore {
     // --- Departments ---
     match /departments/{deptId} {
       allow read, write: if isSignedIn();
+    }
+
+    // --- Configurations (app settings managed by admins) ---
+    match /configs/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
