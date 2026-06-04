@@ -100,7 +100,7 @@ export default function Communications() {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white p-10 rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5">
+          <div className="bg-white p-10 rounded-2xl sm:rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5">
             <div className="flex items-center justify-between mb-10">
               <h3 className="text-xl font-display font-black flex items-center gap-3">
                 <Send className="w-6 h-6 text-church-blue" />
@@ -192,7 +192,7 @@ export default function Communications() {
             </div>
           </div>
 
-          <div className="bg-white rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 overflow-hidden">
+          <div className="bg-white rounded-2xl sm:rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 overflow-hidden">
             <div className="px-10 py-6 border-b border-church-soft flex items-center justify-between">
               <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-church-gray">Recent Dispatch History</h3>
               <History className="w-5 h-5 text-church-gray opacity-30" />
@@ -224,7 +224,7 @@ export default function Communications() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-church-black rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden group">
+          <div className="bg-church-black rounded-2xl sm:rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden group">
              <div className="absolute -right-4 -top-4 w-24 h-24 bg-church-blue/20 rounded-full blur-2xl group-hover:bg-church-blue/40 transition-colors" />
              <div className="flex items-center gap-4 mb-8">
                <div className="p-3 bg-white/10 rounded-2xl">
@@ -247,7 +247,7 @@ export default function Communications() {
              </button>
           </div>
 
-          <div className="bg-white p-8 rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
+          <div className="bg-white p-8 rounded-2xl sm:rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
             <h3 className="text-xs font-black uppercase tracking-widest text-church-black mb-6">Dispatch Protocols</h3>
             <ul className="space-y-4">
               {[

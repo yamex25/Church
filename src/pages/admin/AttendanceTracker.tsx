@@ -164,8 +164,8 @@ export default function AttendanceTracker() {
 
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
               <button onClick={() => {
                 setEditingRecord(null);
                 setFormData(initialFormState);
@@ -175,7 +175,7 @@ export default function AttendanceTracker() {
               </button>
               <h3 className="text-2xl font-black mb-6">{editingRecord ? 'Update Service Record' : 'Log Service Attendance'}</h3>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Service Date</label>
                     <input required type="date" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.serviceDate} onChange={e => setFormData({...formData, serviceDate: e.target.value})} />
@@ -217,8 +217,9 @@ export default function AttendanceTracker() {
         )}
       </AnimatePresence>
 
-      <div className="bg-white rounded-[40px] border border-church-blue/5 shadow-2xl overflow-hidden">
-        <table className="w-full text-left font-sans">
+      <div className="bg-white rounded-2xl sm:rounded-[40px] border border-church-blue/5 shadow-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+        <table className="w-full text-left font-sans min-w-[600px]">
           <thead>
             <tr className="bg-church-blue text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
               <th className="px-8 py-6">Date</th>
@@ -265,6 +266,7 @@ export default function AttendanceTracker() {
             ))}
           </tbody>
         </table>
+        </div>
         {history.length === 0 && (
           <div className="p-20 text-center">
              <div className="bg-church-soft w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">

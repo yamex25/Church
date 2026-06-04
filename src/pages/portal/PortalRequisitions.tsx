@@ -162,7 +162,7 @@ export default function PortalRequisitions() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white p-10 rounded-[48px] border-2 border-church-yellow shadow-2xl relative overflow-hidden"
+            className="bg-white p-10 rounded-2xl sm:rounded-[48px] border-2 border-church-yellow shadow-2xl relative overflow-hidden"
           >
             <form onSubmit={handleSubmit} className="relative z-10 space-y-6">
               <h3 className="font-display text-2xl font-black mb-6">Create Requisition Request</h3>
@@ -309,16 +309,16 @@ export default function PortalRequisitions() {
         
         <div className="space-y-4">
           {loading ? (
-            <div className="bg-white p-8 rounded-[40px] border border-church-soft shadow-sm text-church-gray text-sm">
+            <div className="bg-white p-8 rounded-2xl sm:rounded-[40px] border border-church-soft shadow-sm text-church-gray text-sm">
               Loading your requisitions...
             </div>
           ) : requisitions.length === 0 ? (
-            <div className="bg-white p-8 rounded-[40px] border border-church-soft shadow-sm text-church-gray text-sm">
+            <div className="bg-white p-8 rounded-2xl sm:rounded-[40px] border border-church-soft shadow-sm text-church-gray text-sm">
               No requisitions found yet. Submit a request to see it listed here.
             </div>
           ) : (
             requisitions.map((req: any) => (
-              <div key={req.id} className="bg-white p-8 rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
+              <div key={req.id} className="bg-white p-8 rounded-2xl sm:rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-6 gap-4">
                   <div>
                     <h4 className="text-xl font-black text-church-black mb-2">{req.itemName}</h4>

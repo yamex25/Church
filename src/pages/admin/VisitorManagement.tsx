@@ -460,7 +460,7 @@ export default function VisitorManagement() {
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[40px] border border-slate-200">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-2xl sm:rounded-[40px] border border-slate-200">
         <div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">Visitor Care</h2>
           <p className="text-slate-500 font-medium">Monitoring guest experience and spiritual conversion tracking.</p>
@@ -629,7 +629,7 @@ export default function VisitorManagement() {
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 p-4 bg-church-soft/50 rounded-2xl mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-church-soft/50 rounded-2xl mb-4">
                <div className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-church-blue" />
                   <span className="text-sm font-bold text-church-black">{visitor.phone}</span>
@@ -655,7 +655,7 @@ export default function VisitorManagement() {
                </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6 px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 px-2">
                <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-church-gray mb-1">Current Church</p>
                   <p className="text-xs font-bold text-church-black truncate">{visitor.currentChurch || 'None Registered'}</p>
@@ -708,8 +708,8 @@ export default function VisitorManagement() {
 
       <AnimatePresence>
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[40px] p-10 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
               <button onClick={() => {
                 setEditingVisitor(null);
                 setNewVisitor(initialVisitorState);
@@ -719,7 +719,7 @@ export default function VisitorManagement() {
               </button>
               <h3 className="text-2xl font-black mb-6">{editingVisitor ? 'Edit Visitor Record' : 'Register New Visitor'}</h3>
               <form onSubmit={handleCreate} className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Visitor Name</label>
                     <input required type="text" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newVisitor.name} onChange={e => setNewVisitor({...newVisitor, name: e.target.value})} />
@@ -730,7 +730,7 @@ export default function VisitorManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Sex</label>
                     <select className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newVisitor.sex} onChange={e => setNewVisitor({...newVisitor, sex: e.target.value as any})}>
@@ -753,7 +753,7 @@ export default function VisitorManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Tribe</label>
                     <input type="text" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newVisitor.tribe} onChange={e => setNewVisitor({...newVisitor, tribe: e.target.value})} />
@@ -766,7 +766,7 @@ export default function VisitorManagement() {
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Residence / Location</label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="relative">
                       <select 
                         className="w-full px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all text-xs font-bold appearance-none"
@@ -841,7 +841,7 @@ export default function VisitorManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Current/Previous Church</label>
                     <input type="text" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newVisitor.currentChurch} onChange={e => setNewVisitor({...newVisitor, currentChurch: e.target.value})} />
@@ -855,7 +855,7 @@ export default function VisitorManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Date of Visit</label>
                     <input required type="date" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newVisitor.visitationDate} onChange={e => setNewVisitor({...newVisitor, visitationDate: e.target.value})} />
@@ -930,9 +930,9 @@ export default function VisitorManagement() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md"
           >
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+            <div className="bg-white rounded-2xl sm:rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
               <h3 className="text-2xl font-display font-black mb-6">Add New Division</h3>
               <input 
                 type="text"
@@ -978,9 +978,9 @@ export default function VisitorManagement() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md"
           >
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+            <div className="bg-white rounded-2xl sm:rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
               <h3 className="text-2xl font-display font-black mb-6">Add New Parish</h3>
               <input 
                 type="text"
@@ -1026,9 +1026,9 @@ export default function VisitorManagement() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md"
           >
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+            <div className="bg-white rounded-2xl sm:rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
               <h3 className="text-2xl font-display font-black mb-6">Add New Village</h3>
               <input 
                 type="text"

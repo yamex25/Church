@@ -434,12 +434,12 @@ export default function MemberList() {
 
       <AnimatePresence>
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl relative overflow-hidden"
+              className="bg-white rounded-2xl sm:rounded-[48px] p-10 w-full max-w-2xl shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-8">
                 <button onClick={() => setShowAddForm(false)} className="p-3 bg-church-soft rounded-2xl text-church-gray hover:text-church-blue transition-all">
@@ -582,7 +582,7 @@ export default function MemberList() {
 
                 <div className="space-y-4 pt-4 border-t border-church-soft">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-church-blue px-2">Zone & Cell Assignment</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[9px] font-bold uppercase tracking-widest text-church-gray ml-2">Zone</label>
                       <select 
@@ -669,7 +669,7 @@ export default function MemberList() {
 
                 <div className="space-y-4 pt-4 border-t border-church-soft">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-church-blue px-2">Area of Residence</h4>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="text-[9px] font-bold uppercase tracking-widest text-church-gray ml-2">Division</label>
                       <select 
@@ -774,7 +774,7 @@ export default function MemberList() {
       </AnimatePresence>
 
       {/* Filters and Search */}
-      <div className="bg-white p-6 rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5 flex flex-col md:flex-row gap-5 items-center">
+      <div className="bg-white p-6 rounded-2xl sm:rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5 flex flex-col md:flex-row gap-5 items-center">
         <div className="relative flex-1 w-full font-sans">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-church-blue w-4 h-4" />
           <input 
@@ -807,9 +807,9 @@ export default function MemberList() {
       </div>
 
       {/* Members Table */}
-      <div className="bg-white rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 overflow-hidden">
+      <div className="bg-white rounded-2xl sm:rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans">
+          <table className="w-full text-left font-sans min-w-[700px]">
             <thead>
               <tr className="bg-church-blue text-white text-[10px] uppercase tracking-[0.25em] font-black border-b border-white/10 text-center">
                 <th className="px-6 py-6 text-left">Member</th>
@@ -905,7 +905,7 @@ export default function MemberList() {
         </div>
 
         {/* Pagination */}
-        <div className="px-10 py-8 border-t border-church-soft flex items-center justify-between bg-church-soft/30">
+        <div className="px-4 sm:px-8 py-4 sm:py-6 border-t border-church-soft flex items-center justify-between bg-church-soft/30">
           <span className="text-xs font-bold uppercase tracking-widest text-church-gray opacity-60">Listing {members.length} of 1,280 entries</span>
           <div className="flex items-center gap-4">
             <button className="p-4 border-2 border-church-blue/10 rounded-2xl text-church-gray hover:bg-white transition-all disabled:opacity-30 shadow-sm" disabled>
@@ -926,9 +926,9 @@ export default function MemberList() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md"
           >
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+            <div className="bg-white rounded-2xl sm:rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
               <h3 className="text-2xl font-display font-black mb-6">Add New Division</h3>
               <input 
                 type="text"
@@ -974,9 +974,9 @@ export default function MemberList() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md"
           >
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+            <div className="bg-white rounded-2xl sm:rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
               <h3 className="text-2xl font-display font-black mb-6">Add New Parish</h3>
               <input 
                 type="text"
@@ -1022,9 +1022,9 @@ export default function MemberList() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md"
           >
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
+            <div className="bg-white rounded-2xl sm:rounded-[48px] p-10 w-full max-w-md shadow-2xl relative">
               <h3 className="text-2xl font-display font-black mb-6">Add New Village</h3>
               <input 
                 type="text"

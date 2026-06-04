@@ -342,12 +342,12 @@ export default function DailyExpenseModule() {
       {/* Add/Edit Expense Modal */}
       <AnimatePresence>
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl relative"
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-lg shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowAddForm(false)}
@@ -396,7 +396,7 @@ export default function DailyExpenseModule() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Amount (UGX)</label>
                     <input 

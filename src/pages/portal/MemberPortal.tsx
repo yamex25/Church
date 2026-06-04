@@ -55,12 +55,12 @@ export default function MemberPortal() {
   return (
     <div className="space-y-8">
       {/* Welcome Card */}
-      <section className="bg-church-blue text-white p-10 rounded-[48px] shadow-2xl shadow-church-blue/20 overflow-hidden relative">
+      <section className="bg-church-blue text-white p-10 rounded-2xl sm:rounded-[48px] shadow-2xl shadow-church-blue/20 overflow-hidden relative">
         <div className="relative z-10">
           <p className="text-white/60 text-xs font-bold mb-1 uppercase tracking-[0.2em] font-sans">Member Profile</p>
           <h2 className="text-4xl font-display font-black mb-10 tracking-tight italic">Shalom, {memberName.split(' ')[0]}</h2>
           
-          <div className="flex items-center gap-10">
+          <div className="flex items-center gap-5 sm:gap-10">
             <div>
               <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-1 font-sans">Fellowship</p>
               <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export default function MemberPortal() {
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* Pass / QR */}
-        <section className="bg-white p-10 rounded-[48px] border border-church-blue/5 shadow-xl shadow-church-blue/5 text-center flex flex-col items-center group">
+        <section className="bg-white p-10 rounded-2xl sm:rounded-[48px] border border-church-blue/5 shadow-xl shadow-church-blue/5 text-center flex flex-col items-center group">
           <div className="bg-church-soft p-10 rounded-3xl inline-block mb-8 border border-church-blue/5 shadow-inner transition-transform group-hover:scale-105">
             <QRCodeSVG value={memberId} size={180} level="H" includeMargin={false} bgColor="#F8FAFC" fgColor="#1E40AF" />
           </div>
@@ -99,7 +99,7 @@ export default function MemberPortal() {
 
         <div className="flex flex-col gap-8">
           {/* Next Service (Static for now, could be dynamic from 'events') */}
-          <section className="bg-white p-10 rounded-[48px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
+          <section className="bg-white p-10 rounded-2xl sm:rounded-[48px] border border-church-blue/5 shadow-xl shadow-church-blue/5">
             <div className="flex items-center justify-between mb-8">
               <h3 className="font-display text-2xl font-bold text-church-black">Upcoming</h3>
               <Link to="/portal/events" className="text-[10px] font-bold text-church-blue hover:text-church-yellow flex items-center gap-1 uppercase tracking-widest transition-all">
@@ -123,7 +123,7 @@ export default function MemberPortal() {
 
 
           {/* Giving Summary */}
-          <section className="bg-church-blue p-10 rounded-[48px] shadow-2xl shadow-church-blue/20 flex flex-col justify-between relative overflow-hidden group">
+          <section className="bg-church-blue p-10 rounded-2xl sm:rounded-[48px] shadow-2xl shadow-church-blue/20 flex flex-col justify-between relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
             <div className="relative z-10">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-2">Fellowship Contributions</p>

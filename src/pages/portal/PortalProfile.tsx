@@ -169,7 +169,7 @@ export default function PortalProfile() {
       </div>
 
       {/* Avatar Section */}
-      <section className="bg-white p-12 rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 flex flex-col items-center relative overflow-hidden">
+      <section className="bg-white p-12 rounded-2xl sm:rounded-[48px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 flex flex-col items-center relative overflow-hidden">
         <div className="relative mb-8 pt-4">
           <div className="w-40 h-40 rounded-[32px] bg-church-soft flex items-center justify-center text-7xl font-display font-black text-church-blue border-4 border-white shadow-2xl shadow-church-blue/10 transform -rotate-3">
             {member.name.charAt(0)}
@@ -196,7 +196,7 @@ export default function PortalProfile() {
       </section>
 
       {/* Details List */}
-      <section className="bg-white rounded-[40px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 overflow-hidden divide-y divide-church-soft">
+      <section className="bg-white rounded-2xl sm:rounded-[40px] border border-church-blue/5 shadow-2xl shadow-church-blue/5 overflow-hidden divide-y divide-church-soft">
         {[
           { icon: Mail, label: 'Email Address', val: member.email },
           { icon: Phone, label: 'Contact Number', val: member.phone },
@@ -307,7 +307,7 @@ export default function PortalProfile() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 16 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="w-full max-w-md bg-white rounded-[40px] overflow-hidden shadow-2xl shadow-church-blue/20"
+              className="w-full max-w-md bg-white rounded-2xl sm:rounded-[40px] overflow-hidden shadow-2xl shadow-church-blue/20"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-10 pt-10 pb-6 border-b border-church-soft">

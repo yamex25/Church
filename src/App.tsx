@@ -23,6 +23,7 @@ import AttendanceTracker from '@/src/pages/admin/AttendanceTracker';
 import AssetInventory from '@/src/pages/admin/AssetInventory';
 import HRManagement from '@/src/pages/admin/HRManagement';
 import DailyExpenseModule from '@/src/pages/admin/DailyExpenseModule';
+import AskQuestion from '@/src/pages/admin/AskQuestion';
 import MemberPortal from '@/src/pages/portal/MemberPortal';
 import PortalProfile from '@/src/pages/portal/PortalProfile';
 import PortalContributions from '@/src/pages/portal/PortalContributions';
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="pledges" element={<PledgeTracker />} />
             <Route path="visitors" element={<VisitorManagement />} />
             <Route path="assets" element={<AssetInventory />} />
+            <Route path="ask" element={<AskQuestion />} />
           </Route>
 
           {/* Member Portal Routes */}

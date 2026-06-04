@@ -229,12 +229,12 @@ export default function Requisitions() {
 
       <AnimatePresence>
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative"
+              className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowAddForm(false)}
@@ -249,7 +249,7 @@ export default function Requisitions() {
               </div>
 
               <form onSubmit={handleCreate} className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Department</label>
                     <select 
@@ -412,7 +412,7 @@ export default function Requisitions() {
         ))}
 
         {filtered.length === 0 && !loading && (
-          <div className="text-center py-20 bg-church-soft/30 rounded-[40px] border-2 border-dashed border-church-blue/10">
+          <div className="text-center py-20 bg-church-soft/30 rounded-2xl sm:rounded-[40px] border-2 border-dashed border-church-blue/10">
             <ClipboardList className="w-16 h-16 mx-auto text-church-gray opacity-20 mb-4" />
             <p className="text-church-gray font-bold uppercase tracking-widest text-[10px]">No budget requisitions found.</p>
           </div>

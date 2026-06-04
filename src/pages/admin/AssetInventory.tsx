@@ -206,8 +206,8 @@ export default function AssetInventory() {
 
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative">
               <button onClick={() => { setShowForm(false); setEditingId(null); }} className="absolute top-8 right-8 p-3 bg-church-soft rounded-2xl text-church-gray"><X className="w-6 h-6" /></button>
               <h3 className="text-2xl font-black mb-6">{editingId ? 'Update Asset' : 'New Asset Registration'}</h3>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -219,7 +219,7 @@ export default function AssetInventory() {
                   <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Asset ID (Number Plate, etc.)</label>
                   <input className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.assetId} onChange={e => setFormData({...formData, assetId: e.target.value})} placeholder="e.g., KAB 123X, SN001, etc." />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Department Owner</label>
                     <select required className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})}>
@@ -244,7 +244,7 @@ export default function AssetInventory() {
                     </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Condition</label>
                     <select className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value as any})}>
@@ -258,7 +258,7 @@ export default function AssetInventory() {
                     <input required className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Value (UGX)</label>
                     <input required type="number" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={formData.value || ''} onChange={e => setFormData({...formData, value: Number(e.target.value)})} />
@@ -341,7 +341,7 @@ export default function AssetInventory() {
                 Owned by: {(asset as any).department || 'N/A'}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-4 border-t border-church-soft pt-4 mt-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-church-soft pt-4 mt-auto">
                <div>
                   <span className="text-[10px] font-black uppercase text-church-gray block">Value</span>
                   <span className="text-sm font-black text-church-blue">{formatCurrency(asset.value)}</span>

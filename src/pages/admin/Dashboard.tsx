@@ -185,7 +185,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         {/* Left Column: Recent Activity */}
         <div className="lg:col-span-8 space-y-6">
           <div className="bg-white rounded-2xl p-8 border border-church-blue/10 shadow-lg">

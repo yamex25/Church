@@ -131,7 +131,7 @@ export default function PortalPrayerRequests() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white p-10 rounded-[48px] border-2 border-church-yellow shadow-2xl relative overflow-hidden"
+            className="bg-white p-10 rounded-2xl sm:rounded-[48px] border-2 border-church-yellow shadow-2xl relative overflow-hidden"
           >
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="relative z-10">
               <h3 className="font-display text-2xl font-black mb-6">How can we stand with you?</h3>
@@ -228,7 +228,7 @@ export default function PortalPrayerRequests() {
         </div>
         <div className="space-y-4">
           {requests.map((req) => (
-            <div key={req.id} className="bg-white p-8 rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5 relative overflow-hidden group hover:border-church-blue/20 transition-all cursor-default">
+            <div key={req.id} className="bg-white p-8 rounded-2xl sm:rounded-[40px] border border-church-blue/5 shadow-xl shadow-church-blue/5 relative overflow-hidden group hover:border-church-blue/20 transition-all cursor-default">
               <div className="relative z-10">
                 <div className="flex items-start justify-between mb-6">
                   <div className={cn(
@@ -271,7 +271,7 @@ export default function PortalPrayerRequests() {
         </div>
       </section>
 
-      <div className="bg-church-blue text-white p-10 rounded-[48px] text-center shadow-2xl shadow-church-blue/20 relative overflow-hidden">
+      <div className="bg-church-blue text-white p-10 rounded-2xl sm:rounded-[48px] text-center shadow-2xl shadow-church-blue/20 relative overflow-hidden">
         <div className="relative z-10">
           <HelpCircle className="w-12 h-12 text-church-yellow mx-auto mb-6" />
           <p className="text-xs font-bold leading-relaxed px-6 max-w-sm mx-auto">

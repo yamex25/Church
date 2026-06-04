@@ -645,12 +645,12 @@ export default function FinanceModule() {
 
       <AnimatePresence>
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl relative"
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-lg shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowAddForm(false)}
@@ -672,7 +672,7 @@ export default function FinanceModule() {
                     placeholder="Enter contribution title..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Type</label>
                     <select 
@@ -775,12 +775,12 @@ export default function FinanceModule() {
 
       <AnimatePresence>
         {showExpenseForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl relative"
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-lg shadow-2xl relative"
             >
               <button 
                 onClick={() => {
@@ -869,12 +869,12 @@ export default function FinanceModule() {
       {/* Add New Type Modal */}
       <AnimatePresence>
         {showAddTypeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowAddTypeModal(false)}
@@ -920,12 +920,12 @@ export default function FinanceModule() {
       {/* Add New Service Modal */}
       <AnimatePresence>
         {showAddServiceModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowAddServiceModal(false)}
@@ -971,12 +971,12 @@ export default function FinanceModule() {
       {/* Add New Project Modal */}
       <AnimatePresence>
         {showAddProjectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-xl shadow-2xl relative"
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-xl shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowAddProjectModal(false)}
@@ -1027,7 +1027,7 @@ export default function FinanceModule() {
                     placeholder="Enter target amount..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Start Date</label>
                     <input 
@@ -1062,7 +1062,7 @@ export default function FinanceModule() {
       {showReports ? (
         <div className="space-y-8">
           <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 bg-white p-10 rounded-[48px] border border-church-blue/10 shadow-2xl relative overflow-hidden">
+            <div className="lg:col-span-2 bg-white p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[48px] border border-church-blue/10 shadow-2xl relative overflow-hidden">
                <div className="absolute top-0 right-0 p-10 opacity-[0.03]">
                  <ArrowRightLeft className="w-48 h-48" />
                </div>
@@ -1082,7 +1082,7 @@ export default function FinanceModule() {
                </div>
             </div>
 
-            <div className="bg-church-blue p-10 rounded-[48px] text-white shadow-2xl relative overflow-hidden group">
+            <div className="bg-church-blue p-10 rounded-2xl sm:rounded-[48px] text-white shadow-2xl relative overflow-hidden group">
                <div className="relative z-10">
                  <h4 className="text-4xl font-display font-black mb-2 italic">Contribution Analysis</h4>
                  <p className="text-white/60 text-sm font-medium leading-relaxed">Year-over-year spiritual stewardship growth tracking and capacity planning.</p>
@@ -1103,7 +1103,7 @@ export default function FinanceModule() {
             </div>
           </div>
 
-          <div className="bg-white p-10 rounded-[48px] border border-church-blue/10 shadow-xl">
+          <div className="bg-white p-10 rounded-2xl sm:rounded-[48px] border border-church-blue/10 shadow-xl">
              <h4 className="text-2xl font-display font-black tracking-tight mb-8">Annual Performance Summary</h4>
              <div className="grid md:grid-cols-4 gap-6">
                 {Object.entries(totals.yearly).sort((a,b) => Number(b[0]) - Number(a[0])).map(([year, amount]) => (
@@ -1174,7 +1174,7 @@ export default function FinanceModule() {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-left min-w-[640px]">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold border-b border-slate-100">
                     <th className="px-6 py-3">Member</th>

@@ -304,8 +304,8 @@ export default function PledgeTracker() {
 
       <AnimatePresence>
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative">
               <button onClick={() => setShowAddForm(false)} className="absolute top-8 right-8 p-3 bg-church-soft rounded-2xl text-church-gray">
                 <X className="w-6 h-6" />
               </button>
@@ -365,7 +365,7 @@ export default function PledgeTracker() {
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Amount (UGX)</label>
                     <input required type="number" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newPledge.amount || ''} onChange={e => setNewPledge({...newPledge, amount: Number(e.target.value)})} />
@@ -453,8 +453,8 @@ export default function PledgeTracker() {
       {/* Add Project Modal */}
       <AnimatePresence>
         {showProjectForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-xl shadow-2xl relative">
               <button onClick={() => setShowProjectForm(false)} className="absolute top-8 right-8 p-3 bg-church-soft rounded-2xl text-church-gray">
                 <X className="w-6 h-6" />
               </button>
@@ -526,7 +526,7 @@ export default function PledgeTracker() {
                     placeholder="Enter project description..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Target Amount (UGX)</label>
                     <input 
@@ -537,7 +537,7 @@ export default function PledgeTracker() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Start Date</label>
                     <input 

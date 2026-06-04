@@ -8,3 +8,4 @@ coverage/
 !.env.example
 # Python virtual environment
 venv/
+.vscode/

@@ -881,7 +881,7 @@ export default function HRManagement() {
       </div>
 
       {/* Main Tabs */}
-      <div className="bg-white rounded-[40px] border border-church-blue/5 shadow-xl overflow-hidden">
+      <div className="bg-white rounded-2xl sm:rounded-[40px] border border-church-blue/5 shadow-xl overflow-hidden">
         <div className="flex border-b border-church-blue/5">
           <button 
             onClick={() => setActiveTab('employees')}
@@ -963,7 +963,7 @@ export default function HRManagement() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div className="p-3 bg-white/60 rounded-2xl">
                       <p className="text-[9px] font-black uppercase tracking-widest text-church-gray mb-1">Department</p>
                       <p className="text-xs font-bold">{employee.department}</p>
@@ -1021,7 +1021,7 @@ export default function HRManagement() {
             </div>
           ) : activeTab === 'payroll' ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-left min-w-[640px]">
                 <thead>
                   <tr className="bg-church-blue text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
                     <th className="px-8 py-6">Staff Name</th>
@@ -1128,7 +1128,7 @@ export default function HRManagement() {
               </div>
 
               {departments.length === 0 ? (
-                <div className="text-center py-20 bg-church-soft/30 rounded-[40px] border-2 border-dashed border-church-blue/10">
+                <div className="text-center py-20 bg-church-soft/30 rounded-2xl sm:rounded-[40px] border-2 border-dashed border-church-blue/10">
                   <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-church-gray">
                     <Briefcase className="w-8 h-8" />
                   </div>
@@ -1182,8 +1182,8 @@ export default function HRManagement() {
               )}
 
               {showAddDept && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[40px] p-10 w-full max-w-sm shadow-2xl relative">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-sm shadow-2xl relative">
                     <button onClick={() => setShowAddDept(false)} className="absolute top-6 right-6 p-2 bg-church-soft rounded-lg text-church-gray">
                       <X className="w-4 h-4" />
                     </button>
@@ -1220,8 +1220,8 @@ export default function HRManagement() {
       {/* Add Employee Modal */}
       <AnimatePresence>
         {showAddEmployee && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[40px] p-10 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
               <button 
                 onClick={() => {
                   setEditingEmployee(null);
@@ -1241,7 +1241,7 @@ export default function HRManagement() {
                     {error}
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Full Name</label>
                     <input required type="text" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newEmployee.name} onChange={e => setNewEmployee({...newEmployee, name: e.target.value})} />
@@ -1252,7 +1252,7 @@ export default function HRManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Department</label>
                     <select required className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newEmployee.department} onChange={e => setNewEmployee({...newEmployee, department: e.target.value})}>
@@ -1268,7 +1268,7 @@ export default function HRManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Phone Contact</label>
                     <input required type="text" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newEmployee.phone} onChange={e => setNewEmployee({...newEmployee, phone: e.target.value})} />
@@ -1279,7 +1279,7 @@ export default function HRManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Date of Joining</label>
                     <input type="date" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newEmployee.joinedDate} onChange={e => setNewEmployee({...newEmployee, joinedDate: e.target.value})} />
@@ -1293,7 +1293,7 @@ export default function HRManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">TIN Number (Optional)</label>
                     <input type="text" placeholder="Tax Identification Number" className="w-full px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm" value={newEmployee.tinNumber} onChange={e => setNewEmployee({...newEmployee, tinNumber: e.target.value})} />
@@ -1326,8 +1326,8 @@ export default function HRManagement() {
         )}
 
         {showAddPayroll && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-church-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[40px] p-10 w-full max-w-lg shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-church-black/60 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-2xl sm:rounded-[40px] p-10 w-full max-w-lg shadow-2xl relative max-h-[90vh] overflow-y-auto">
               <button onClick={() => setShowAddPayroll(false)} className="absolute top-8 right-8 p-3 bg-church-soft rounded-2xl text-church-gray hover:text-church-black transition-colors">
                 <X className="w-6 h-6" />
               </button>
@@ -1380,7 +1380,7 @@ export default function HRManagement() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1 col-span-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Payment Type</label>
                     <select 
@@ -1441,11 +1441,11 @@ export default function HRManagement() {
         )}
 
         {showPayslip && selectedPayslip && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
-              className="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl relative overflow-hidden my-auto"
+              className="bg-white rounded-2xl sm:rounded-[40px] w-full max-w-2xl shadow-2xl relative overflow-hidden my-auto"
             >
               {/* Header Bar */}
               <div className="bg-church-soft/50 px-8 py-4 flex items-center justify-between border-b border-church-soft print:hidden">
@@ -1498,7 +1498,7 @@ export default function HRManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-10 mb-12 pb-12 border-b-2 border-church-soft border-dashed">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10 mb-12 pb-12 border-b-2 border-church-soft border-dashed">
                   <div className="space-y-5">
                     <div className="bg-church-soft/30 p-4 rounded-2xl border border-church-soft/50">
                       <p className="text-[9px] font-black uppercase text-church-gray tracking-widest mb-1.5 leading-none">Employee Details</p>
@@ -1557,7 +1557,7 @@ export default function HRManagement() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-12 mt-20 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 mt-20 text-center">
                   <div className="space-y-4">
                     <div className="h-0.5 bg-church-black/10 w-full" />
                     <div>
@@ -1602,8 +1602,8 @@ export default function HRManagement() {
         )}
 
         {showHistoryModal && selectedStaffForHistory && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-church-black/80 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[40px] w-full max-w-4xl shadow-2xl relative overflow-hidden h-[80vh] flex flex-col">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-church-black/80 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl sm:rounded-[40px] w-full max-w-4xl shadow-2xl relative overflow-hidden h-[80vh] flex flex-col">
               <div className="p-8 border-b border-church-soft flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xl font-black">

@@ -118,7 +118,7 @@ export default function EventsList() {
 
       <AnimatePresence>
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -139,7 +139,7 @@ export default function EventsList() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Event Title</label>
                   <input required placeholder="e.g. Youth Revival" className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200" value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <div className="space-y-1">
                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Date</label>
                      <input type="date" className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200" value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})} />
