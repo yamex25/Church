@@ -19,6 +19,24 @@ export interface Residence {
   village: string;
 }
 
+export interface Zone {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Cell {
+  id: string;
+  name: string;
+  zoneId: string;
+  zoneName: string;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Member {
   id: string;
   name: string;
@@ -31,6 +49,12 @@ export interface Member {
   residence: Residence;
   membershipStatus: MembershipStatus;
   categories: string[]; // choir, usher, youth, etc.
+  zone?: string; // Zone ID
+  zoneName?: string; // Zone name for display
+  cell?: string; // Cell ID
+  cellName?: string; // Cell name for display
+  isLeader?: boolean; // Is this person a leader
+  leaderType?: 'Cell' | 'Zone'; // Type of leader (Cell Leader or Zonal Leader)
   joinedAt: string;
   createdAt: string;
   photoUrl?: string;

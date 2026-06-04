@@ -14,7 +14,7 @@ import {
   Edit2
 } from 'lucide-react';
 import { cn, formatDate, calculateAge, downloadExcel } from '@/src/lib/utils';
-import { MembershipStatus, Member } from '@/src/types';
+import { MembershipStatus, Member, Zone, Cell } from '@/src/types';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '@/src/components/AuthContext';
@@ -207,10 +207,12 @@ export default function MemberList() {
   const [filterMinistry, setFilterMinistry] = useState('All');
   const [members, setMembers] = useState<Member[]>([]);
   const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [cells, setCells] = useState<Cell[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
-    const [showAddDivision, setShowAddDivision] = useState(false);
+  const [showAddDivision, setShowAddDivision] = useState(false);
   const [showAddParish, setShowAddParish] = useState(false);
   const [showAddVillage, setShowAddVillage] = useState(false);
   const [newDivision, setNewDivision] = useState('');
@@ -231,6 +233,12 @@ export default function MemberList() {
     maritalStatus: 'Single' as 'Single' | 'Married' | 'Widowed' | 'Divorced',
     dateOfBirth: '',
     tribe: '',
+    zone: '',
+    zoneName: '',
+    cell: '',
+    cellName: '',
+    isLeader: false,
+    leaderType: '' as '' | 'Cell' | 'Zone',
     residence: {
       division: '',
       parish: '',
@@ -269,6 +277,36 @@ export default function MemberList() {
     });
 
     return () => unsubscribeDepts();
+  }, []);
+
+  useEffect(() => {
+    const qZones = query(collection(db, 'zones'), orderBy('name', 'asc'));
+    const unsubscribeZones = onSnapshot(qZones, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Zone[];
+      setZones(docs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'zones');
+    });
+
+    return () => unsubscribeZones();
+  }, []);
+
+  useEffect(() => {
+    const qCells = query(collection(db, 'cells'), orderBy('name', 'asc'));
+    const unsubscribeCells = onSnapshot(qCells, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Cell[];
+      setCells(docs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'cells');
+    });
+
+    return () => unsubscribeCells();
   }, []);
 
   const handleCreateMember = async (e: React.FormEvent) => {
@@ -345,6 +383,12 @@ export default function MemberList() {
       maritalStatus: member.maritalStatus || 'Single',
       dateOfBirth: member.dateOfBirth,
       tribe: member.tribe || '',
+      zone: member.zone || '',
+      zoneName: member.zoneName || '',
+      cell: member.cell || '',
+      cellName: member.cellName || '',
+      isLeader: member.isLeader || false,
+      leaderType: member.leaderType || '',
       residence: member.residence || { division: '', parish: '', village: '' }
     });
     setMemberNameInput(member.name);
@@ -533,6 +577,93 @@ export default function MemberList() {
                         <option key={status} value={status}>{status}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-church-soft">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-church-blue px-2">Zone & Cell Assignment</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-church-gray ml-2">Zone</label>
+                      <select 
+                        className="w-full px-4 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-xs font-bold"
+                        value={newMember.zone}
+                        onChange={(e) => {
+                          const selectedZoneId = e.target.value;
+                          const selectedZone = zones.find(z => z.id === selectedZoneId);
+                          setNewMember({
+                            ...newMember,
+                            zone: selectedZoneId,
+                            zoneName: selectedZone?.name || '',
+                            cell: '',
+                            cellName: ''
+                          });
+                        }}
+                      >
+                        <option value="">Select Zone (Optional)</option>
+                        {zones.map(zone => (
+                          <option key={zone.id} value={zone.id}>{zone.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-church-gray ml-2">Cell</label>
+                      <select 
+                        className="w-full px-4 py-3 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 focus:bg-white transition-all text-xs font-bold"
+                        value={newMember.cell}
+                        onChange={(e) => {
+                          const selectedCellId = e.target.value;
+                          const selectedCell = cells.find(c => c.id === selectedCellId);
+                          setNewMember({
+                            ...newMember,
+                            cell: selectedCellId,
+                            cellName: selectedCell?.name || ''
+                          });
+                        }}
+                        disabled={!newMember.zone}
+                      >
+                        <option value="">Select Cell (Optional)</option>
+                        {newMember.zone && cells
+                          .filter(c => c.zoneId === newMember.zone)
+                          .map(cell => (
+                            <option key={cell.id} value={cell.id}>{cell.name}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-church-soft">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-church-blue px-2">Leadership Role</h4>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newMember.isLeader}
+                        onChange={(e) => setNewMember({
+                          ...newMember,
+                          isLeader: e.target.checked,
+                          leaderType: e.target.checked ? newMember.leaderType : ''
+                        })}
+                        className="w-4 h-4 accent-church-blue rounded"
+                      />
+                      <span className="text-xs font-bold text-church-gray">This member is a leader</span>
+                    </label>
+                    {newMember.isLeader && (
+                      <select
+                        value={newMember.leaderType}
+                        onChange={(e) => setNewMember({
+                          ...newMember,
+                          leaderType: e.target.value as 'Cell' | 'Zone'
+                        })}
+                        className="px-4 py-2 rounded-lg bg-church-soft border-2 border-transparent focus:border-church-blue/20 text-xs font-bold"
+                      >
+                        <option value="">Select Leader Type</option>
+                        <option value="Cell">Cell Leader</option>
+                        <option value="Zone">Zonal Leader</option>
+                      </select>
+                    )}
                   </div>
                 </div>
 

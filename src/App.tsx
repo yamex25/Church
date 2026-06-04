@@ -9,6 +9,7 @@ import LandingPage from '@/src/pages/LandingPage';
 import AuthPage from '@/src/pages/AuthPage';
 import Dashboard from '@/src/pages/admin/Dashboard';
 import MemberList from '@/src/pages/admin/MemberList';
+import HomeCell from '@/src/pages/admin/HomeCell';
 import AttendanceScan from '@/src/pages/admin/AttendanceScan';
 import FinanceModule from '@/src/pages/admin/FinanceModule';
 import EventsList from '@/src/pages/admin/EventsList';
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/admin" element={<PrivateRoute role="admin"><AdminLayout /></PrivateRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="members" element={<MemberList />} />
+            <Route path="home-cell" element={<HomeCell />} />
             <Route path="attendance" element={<AttendanceTracker />} />
             <Route path="attendance-scan" element={<AttendanceScan />} />
             <Route path="finance" element={<FinanceModule />} />

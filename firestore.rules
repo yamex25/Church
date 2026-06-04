@@ -140,5 +140,17 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // --- Zones (Cell zone organization) ---
+    match /zones/{zoneId} {
+      allow read: if isSignedIn();
+      allow write: if isBootstrapAdmin();
+    }
+
+    // --- Cells (Zone cells organization) ---
+    match /cells/{cellId} {
+      allow read: if isSignedIn();
+      allow write: if isBootstrapAdmin();
+    }
   }
 }

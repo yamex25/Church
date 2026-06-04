@@ -1,18 +1,118 @@
-import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { 
-  Home, 
-  User, 
-  Heart, 
-  History, 
+import {
+  Home,
+  User,
+  Heart,
+  History,
   CalendarDays,
   LogOut,
   Bell,
   Church,
-  FileText
+  FileText,
+  ShieldCheck,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from './AuthContext';
+import { useState, useRef, useEffect } from 'react';
+
+function TwoFactorGate() {
+  const { verifyTwoFactor, logout } = useAuth();
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 200);
+  }, []);
+
+  const handleVerify = async () => {
+    if (code.length !== 6) return;
+    setLoading(true);
+    setError('');
+    const valid = await verifyTwoFactor(code);
+    if (!valid) setError('Incorrect code. Check your authenticator app and try again.');
+    setLoading(false);
+  };
+
+  const handleCodeChange = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 6);
+    setCode(digits);
+    setError('');
+  };
+
+  return (
+    <div className="min-h-screen bg-church-soft flex flex-col items-center justify-center p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-white rounded-[48px] p-12 shadow-2xl shadow-church-blue/10 border border-church-blue/5 text-center"
+      >
+        <div className="w-20 h-20 bg-church-blue/10 rounded-[28px] mx-auto mb-8 flex items-center justify-center">
+          <ShieldCheck className="w-10 h-10 text-church-blue" />
+        </div>
+
+        <h2 className="text-2xl font-display font-black text-church-black tracking-tight mb-2">
+          Two-Factor Authentication
+        </h2>
+        <p className="text-sm text-church-gray font-medium mb-10 max-w-[280px] mx-auto">
+          Enter the 6-digit code from your authenticator app to access the portal.
+        </p>
+
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          placeholder="000000"
+          value={code}
+          onChange={(e) => handleCodeChange(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+          maxLength={6}
+          className="w-full text-center text-4xl font-black tracking-[0.5em] py-5 bg-church-soft border-2 border-church-blue/10 rounded-2xl focus:outline-none focus:border-church-blue text-church-black transition-colors mb-4"
+        />
+
+        {error && (
+          <div className="flex items-center justify-center gap-2 text-red-600 text-xs font-medium mb-4">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
+        <button
+          onClick={handleVerify}
+          disabled={code.length !== 6 || loading}
+          className={cn(
+            'w-full py-5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all mb-6',
+            code.length === 6 && !loading
+              ? 'bg-church-blue text-white hover:bg-church-blue/90 shadow-lg shadow-church-blue/20 active:scale-95'
+              : 'bg-church-soft text-church-gray cursor-not-allowed'
+          )}
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Verifying...
+            </span>
+          ) : 'Verify & Enter Portal'}
+        </button>
+
+        <button
+          onClick={() => { if (window.confirm('Sign out from GraceFlow?')) logout(); }}
+          className="text-[10px] font-black uppercase tracking-widest text-church-gray hover:text-red-600 transition-colors flex items-center justify-center gap-2 mx-auto"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          Sign Out
+        </button>
+      </motion.div>
+
+      <p className="mt-10 text-[10px] font-black uppercase tracking-[0.2em] text-church-gray">
+        GraceFlow Systems &bull; Secured Access
+      </p>
+    </div>
+  );
+}
 
 const navItems = [
   { icon: Home, label: 'Portal', path: '/portal' },
@@ -26,7 +126,11 @@ const navItems = [
 
 export default function PortalLayout() {
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, twoFactorEnabled, twoFactorVerified } = useAuth();
+
+  if (twoFactorEnabled && !twoFactorVerified) {
+    return <TwoFactorGate />;
+  }
 
   const handleNotificationClick = () => {
     alert("You have no new notifications.");

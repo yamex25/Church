@@ -1,5 +1,5 @@
 {
-  "name": "GraceFlow Church Management",
+  "name": "GraceFlow Church Management System",
   "description": "A comprehensive digital platform for church administration, member management, attendance tracking, and financial oversight.",
   "requestFramePermissions": [],
   "majorCapabilities": ["Member Management", "Financial Tracking", "Event Management", "Prayer Requests"]

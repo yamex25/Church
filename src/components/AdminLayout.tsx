@@ -16,7 +16,8 @@ import {
   UserCheck,
   Package,
   Activity,
-  Briefcase
+  Briefcase,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from './AuthContext';
@@ -25,6 +26,7 @@ import { UserRole } from '@/src/types';
 const sidebarItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/admin', roles: [UserRole.ADMIN, UserRole.PASTOR, UserRole.TREASURER, UserRole.SECRETARY] },
   { icon: Users, label: 'Members', path: '/admin/members', roles: [UserRole.ADMIN, UserRole.PASTOR, UserRole.SECRETARY] },
+  { icon: Layers, label: 'Home Cell', path: '/admin/home-cell', roles: [UserRole.ADMIN, UserRole.PASTOR, UserRole.SECRETARY] },
   { icon: Activity, label: 'Attendance', path: '/admin/attendance', roles: [UserRole.ADMIN, UserRole.PASTOR, UserRole.SECRETARY] },
   { icon: DollarSign, label: 'Finance', path: '/admin/finance', roles: [UserRole.ADMIN, UserRole.PASTOR, UserRole.TREASURER] },
   { icon: Briefcase, label: 'HR & Payroll', path: '/admin/hr', roles: [UserRole.ADMIN, UserRole.PASTOR] },
