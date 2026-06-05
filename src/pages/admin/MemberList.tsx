@@ -20,7 +20,11 @@ import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, update
 import { useAuth } from '@/src/components/AuthContext';
 
 // Kampala location data structure
-const kampalaLocations = {
+const kampalaLocations: {
+  divisions: string[];
+  parishes: { [key: string]: string[] };
+  villages: { [key: string]: string[] };
+} = {
   divisions: [
     'Kampala Central',
     'Rubaga',
@@ -789,7 +793,7 @@ export default function MemberList() {
           <select 
             value={filterMinistry}
             onChange={(e) => setFilterMinistry(e.target.value)}
-            className="px-6 py-4 border-2 border-church-blue/10 rounded-2xl text-church-gray bg-white transition-all text-xs font-bold uppercase tracking-widest w-full md:w-auto cursor-pointer focus:outline-none focus:border-church-blue/20"
+            className="px-6 py-4 border-2 border-church-blue/10 rounded-2xl text-church-gray bg-white transition-all text-xs font-bold w-full md:w-auto cursor-pointer focus:outline-none focus:border-church-blue/20"
           >
             <option value="All">All Ministries</option>
             <option value="General">General</option>
@@ -828,7 +832,8 @@ export default function MemberList() {
                 const matchesSearch = (m.name && m.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
                   (m.tribe && m.tribe.toLowerCase().includes(searchTerm.toLowerCase())) ||
                   (m.residence?.village && m.residence.village.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (m.residence?.division && m.residence.division.toLowerCase().includes(searchTerm.toLowerCase()));
+                  (m.residence?.division && m.residence.division.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (m.categories && m.categories.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase())));
                 
                 const matchesFilter = filterMinistry === 'All' || (m.categories && m.categories.includes(filterMinistry));
                 

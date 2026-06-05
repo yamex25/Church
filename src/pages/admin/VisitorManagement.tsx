@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  MessageSquare, 
+import {
+  Users,
+  Plus,
+  Search,
+  Mail,
+  Phone,
+  Calendar,
+  MessageSquare,
   ChevronRight,
   CheckCircle2,
   X,
@@ -16,7 +16,9 @@ import {
   Download,
   TrendingUp,
   BarChart3,
-  Target
+  Target,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
@@ -218,6 +220,7 @@ export default function VisitorManagement() {
   const [newDivision, setNewDivision] = useState('');
   const [newParish, setNewParish] = useState('');
   const [newVillage, setNewVillage] = useState('');
+  const [visitorView, setVisitorView] = useState<'kanban' | 'list'>('kanban');
   const [members, setMembers] = useState<{id: string, name: string}[]>([]);
   const [invitedByInput, setInvitedByInput] = useState('');
   const [showInvitedBySuggestions, setShowInvitedBySuggestions] = useState(false);
@@ -595,10 +598,82 @@ export default function VisitorManagement() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-[32px] border border-church-blue/5 shadow-xl shadow-church-blue/5 flex items-center gap-4">
-        <Search className="w-5 h-5 text-church-blue ml-4" />
-        <input type="text" placeholder="Search visitors by name or phone..." className="flex-1 bg-transparent border-none focus:ring-0 font-bold text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+      <div className="bg-white p-4 rounded-[32px] border border-church-blue/5 shadow-xl shadow-church-blue/5 flex items-center gap-4">
+        <Search className="w-5 h-5 text-church-blue ml-2 flex-shrink-0" />
+        <input type="text" placeholder="Search visitors by name or phone..." className="flex-1 bg-transparent border-none focus:ring-0 font-bold text-sm min-w-0" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        <div className="flex items-center gap-1 bg-church-soft p-1 rounded-xl border border-church-blue/10 flex-shrink-0">
+          <button onClick={() => setVisitorView('kanban')} title="Card view" className={cn('p-2 rounded-lg transition-all', visitorView === 'kanban' ? 'bg-white shadow-sm text-church-blue' : 'text-church-gray hover:text-church-black')}>
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button onClick={() => setVisitorView('list')} title="List view" className={cn('p-2 rounded-lg transition-all', visitorView === 'list' ? 'bg-white shadow-sm text-church-blue' : 'text-church-gray hover:text-church-black')}>
+            <List className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {visitorView === 'list' ? (
+        <div className="bg-white rounded-[32px] border border-church-blue/5 shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[860px]">
+              <thead>
+                <tr className="bg-church-blue text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
+                  <th className="px-6 py-5 text-left">Visitor</th>
+                  <th className="px-6 py-5">Date of Visit</th>
+                  <th className="px-6 py-5">Status</th>
+                  <th className="px-6 py-5">Phone</th>
+                  <th className="px-6 py-5">Church</th>
+                  <th className="px-6 py-5">Born Again</th>
+                  <th className="px-6 py-5">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-church-soft">
+                {filtered.map(visitor => (
+                  <tr key={visitor.id} className="hover:bg-church-soft/20 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-church-soft text-church-blue font-black flex items-center justify-center text-sm flex-shrink-0">
+                          {visitor.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm text-church-black truncate">{visitor.name}</div>
+                          <div className="text-[10px] text-church-gray truncate">{visitor.email || '—'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-medium text-church-gray whitespace-nowrap">{formatDate(visitor.visitationDate)}</td>
+                    <td className="px-6 py-4">
+                      <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
+                        visitor.status === 'New' ? 'bg-amber-100 text-amber-700' :
+                        visitor.status === 'Followed Up' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-church-blue text-white'
+                      )}>{visitor.status}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-church-black">{visitor.phone}</td>
+                    <td className="px-6 py-4 text-xs text-church-gray font-medium max-w-[130px] truncate">{visitor.currentChurch || '—'}</td>
+                    <td className="px-6 py-4">
+                      <span className={cn('text-xs font-black', visitor.isBornAgain ? 'text-emerald-600' : 'text-rose-500')}>
+                        {visitor.isBornAgain ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        {visitor.status === 'New' && (
+                          <button onClick={() => updateStatus(visitor.id!, 'Followed Up')} className="px-2.5 py-1 text-[9px] font-black uppercase bg-church-soft text-church-gray rounded-lg hover:bg-church-blue hover:text-white transition-all whitespace-nowrap">Follow Up</button>
+                        )}
+                        {visitor.status === 'Followed Up' && (
+                          <button onClick={() => convertToMember(visitor)} className="px-2.5 py-1 text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all whitespace-nowrap">Convert</button>
+                        )}
+                        <button onClick={() => handleEdit(visitor)} className="p-1.5 bg-church-soft text-church-blue rounded-lg hover:bg-church-blue hover:text-white transition-all"><Zap className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(visitor.id!)} className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
 
       <div className="grid lg:grid-cols-2 gap-6">
         {filtered.map((visitor) => (
@@ -705,6 +780,7 @@ export default function VisitorManagement() {
           </motion.div>
         ))}
       </div>
+      )}
 
       <AnimatePresence>
         {showAddForm && (

@@ -29,7 +29,7 @@ const modules = [
   {
     icon: LayoutDashboard,
     name: "Dashboard",
-    desc: "One screen that shows you what's happening across the church — attendance numbers, recent contributions, upcoming events, and tasks that need attention."
+    desc: "One screen that shows you what's happening across the church  attendance numbers, recent contributions, upcoming events, and tasks that need attention."
   },
   {
     icon: Users,
@@ -54,7 +54,7 @@ const modules = [
   {
     icon: Heart,
     name: "Prayer Requests",
-    desc: "Members submit requests that pastoral staff can view, follow up on, and update — so nothing slips through the cracks."
+    desc: "Members submit requests that pastoral staff can view, follow up on, and update  so nothing slips through the cracks."
   },
   {
     icon: Home,
@@ -74,7 +74,7 @@ const modules = [
   {
     icon: Package,
     name: "Asset Inventory",
-    desc: "List and track church property — sound equipment, vehicles, furniture — with condition notes and the person responsible."
+    desc: "List and track church property sound equipment, vehicles, furniture  with condition notes and the person responsible."
   },
   {
     icon: Receipt,
@@ -89,7 +89,7 @@ const modules = [
   {
     icon: FileText,
     name: "Requisitions",
-    desc: "Staff raise purchase requests that go through an approval chain before any money moves — keeping spending orderly and authorized."
+    desc: "Staff raise purchase requests that go through an approval chain before any money moves  keeping spending orderly and authorized."
   },
   {
     icon: UserPlus,
@@ -186,13 +186,17 @@ export default function LandingPage() {
           <div className="bg-church-blue p-2.5 rounded-xl rotate-3 shadow-lg shadow-church-blue/20">
             <Church className="text-white w-6 h-6" />
           </div>
-          <span className="font-display font-blue text-2xl tracking-tight text-church-blue">GraceFlow</span>
+          <span className="font-display font-bold text-2xl tracking-tight text-church-blue">GraceFlow</span>
         </div>
         <div className="flex items-center gap-8">
-          <Link to="/admin" className="text-xs font-blue uppercase tracking-widest  bg-church-blue text-church-yellow  px-8 py-3 rounded-2xl hover:text-church-white transition-colors">Staff Login</Link>
+                    <h1 className="text-lg font-bold uppercase tracking-widest   text-church-blue  px-8 py-3 rounded-2xl hover:text-church-yello transition-colors">+256773496430</h1>
+
+          
+          <Link to="/admin" className="text-xs font-bold uppercase tracking-widest  bg-church-blue text-church-yellow  px-8 py-3 rounded-2xl hover:text-church-white transition-colors">Staff Login</Link>
+          
           <Link
             to="/portal"
-            className="bg-church-blue text-church-yellow px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-105 hover:text-church-white  active:scale-95 transition-all shadow-xl shadow-church-yellow/20"
+            className="bg-church-blue text-church-yellow px-8 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest hover:scale-105 hover:text-church-white  active:scale-95 transition-all shadow-xl shadow-church-yellow/20"
           >
             Member Portal
           </Link>

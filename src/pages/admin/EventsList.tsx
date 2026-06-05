@@ -123,7 +123,7 @@ export default function EventsList() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-[32px] p-8 w-full max-w-lg shadow-2xl relative"
+              className="bg-white rounded-[32px] p-8 w-full max-w-lg shadow-2xl relative text-slate-900"
             >
               <button onClick={() => setShowAddForm(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors">
                 <X className="w-6 h-6" />
@@ -137,16 +137,16 @@ export default function EventsList() {
                 )}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Event Title</label>
-                  <input required placeholder="e.g. Youth Revival" className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200" value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} />
+                  <input required placeholder="e.g. Youth Revival" className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400" value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <div className="space-y-1">
                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Date</label>
-                     <input type="date" className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200" value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})} />
+                     <input type="date" className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900" value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})} />
                    </div>
                    <div className="space-y-1">
                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Type</label>
-                     <select className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200" value={newEvent.type} onChange={e => setNewEvent({...newEvent, type: e.target.value as any})}>
+                     <select className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900" value={newEvent.type} onChange={e => setNewEvent({...newEvent, type: e.target.value as any})}>
                        <option value="General Event">General Event</option>
                        {services.map(s => (
                          <option key={s.id} value={s.name}>{s.name}</option>
@@ -156,11 +156,11 @@ export default function EventsList() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Location</label>
-                  <input required placeholder="Main Sanctuary/Hall..." className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200" value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} />
+                  <input required placeholder="Main Sanctuary/Hall..." className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400" value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Short Description</label>
-                  <textarea rows={3} className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200" value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} />
+                  <textarea rows={3} className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400" value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} />
                 </div>
                 <button 
                   type="submit" 
@@ -203,7 +203,7 @@ export default function EventsList() {
           <input 
             type="text" 
             placeholder="Search events by title or location..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

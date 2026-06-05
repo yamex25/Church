@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  MapPin, 
-  ShieldCheck, 
-  AlertTriangle, 
-  DollarSign, 
+import {
+  Package,
+  Plus,
+  Search,
+  MapPin,
+  ShieldCheck,
+  AlertTriangle,
+  DollarSign,
   Calendar,
   X,
   Trash2,
   Edit2,
-  Download
+  Download,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -42,6 +44,7 @@ export default function AssetInventory() {
   });
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [assetView, setAssetView] = useState<'kanban' | 'list'>('kanban');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -177,6 +180,14 @@ export default function AssetInventory() {
               className="pl-10 pr-4 py-3 border-2 border-church-blue/10 rounded-2xl font-medium text-sm focus:outline-none focus:border-church-blue/30 transition-all"
             />
           </div>
+          <div className="flex items-center gap-1 bg-church-soft p-1 rounded-xl border border-church-blue/10">
+            <button onClick={() => setAssetView('kanban')} title="Card view" className={cn('p-2.5 rounded-lg transition-all', assetView === 'kanban' ? 'bg-white shadow-sm text-church-blue' : 'text-church-gray hover:text-church-black')}>
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button onClick={() => setAssetView('list')} title="List view" className={cn('p-2.5 rounded-lg transition-all', assetView === 'list' ? 'bg-white shadow-sm text-church-blue' : 'text-church-gray hover:text-church-black')}>
+              <List className="w-4 h-4" />
+            </button>
+          </div>
           <button onClick={handleExport} className="flex items-center gap-2 border-2 border-church-blue/10 text-church-gray px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-church-soft transition-all">
             <Download className="w-4 h-4" /> Export Excel
           </button>
@@ -309,8 +320,64 @@ export default function AssetInventory() {
         )}
       </AnimatePresence>
 
+      {assetView === 'list' ? (
+        <div className="bg-white rounded-[32px] border border-church-blue/5 shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[900px]">
+              <thead>
+                <tr className="bg-church-blue text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
+                  <th className="px-6 py-5 text-left">Asset</th>
+                  <th className="px-6 py-5">Category</th>
+                  <th className="px-6 py-5">Department</th>
+                  <th className="px-6 py-5">Condition</th>
+                  <th className="px-6 py-5 text-right">Value</th>
+                  <th className="px-6 py-5">Location</th>
+                  <th className="px-6 py-5">Purchased</th>
+                  <th className="px-6 py-5">Proof</th>
+                  <th className="px-6 py-5">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-church-soft">
+                {assets.filter(a => searchTerm === '' || a.name.toLowerCase().includes(searchTerm.toLowerCase())).map(asset => (
+                  <tr key={asset.id} className="hover:bg-church-soft/20 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-church-black">{asset.name}</div>
+                      {asset.assetId && <div className="text-[10px] text-church-blue font-black">{asset.assetId}</div>}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-church-gray font-medium">{asset.category || '—'}</td>
+                    <td className="px-6 py-4 text-xs text-indigo-600 font-bold">{(asset as any).department || '—'}</td>
+                    <td className="px-6 py-4">
+                      <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
+                        asset.condition === 'Good' ? 'bg-emerald-100 text-emerald-700' :
+                        asset.condition === 'Fair' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-rose-100 text-rose-700'
+                      )}>{asset.condition}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-black text-church-blue text-sm">{formatCurrency(asset.value)}</td>
+                    <td className="px-6 py-4 text-xs text-church-gray font-medium">{asset.location || '—'}</td>
+                    <td className="px-6 py-4 text-xs text-church-gray whitespace-nowrap">{asset.purchaseDate}</td>
+                    <td className="px-6 py-4">
+                      {asset.proofUrl
+                        ? <button onClick={() => viewProof(asset.proofUrl!)} className="text-[10px] font-black uppercase text-emerald-600 underline hover:text-emerald-700">View</button>
+                        : <span className="text-[10px] font-black uppercase text-slate-400">None</span>
+                      }
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleEdit(asset)} className="p-1.5 bg-church-soft text-church-blue rounded-lg hover:bg-church-blue hover:text-white transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(asset.id!)} className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+
       <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-        {assets.filter(asset => 
+        {assets.filter(asset =>
           searchTerm === '' || asset.name.toLowerCase().includes(searchTerm.toLowerCase())
         ).map((asset) => (
           <div key={asset.id} className="bg-white rounded-[32px] p-8 border border-church-blue/5 shadow-xl hover:shadow-2xl transition-all relative overflow-hidden group">
@@ -363,6 +430,7 @@ export default function AssetInventory() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

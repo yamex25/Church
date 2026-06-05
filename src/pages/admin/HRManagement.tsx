@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Users, 
-  Briefcase, 
-  CreditCard, 
-  Plus, 
-  Search, 
-  X, 
-  UserPlus, 
+import {
+  Users,
+  Briefcase,
+  CreditCard,
+  Plus,
+  Search,
+  X,
+  UserPlus,
   DollarSign,
   TrendingUp,
   Download,
@@ -16,7 +16,9 @@ import {
   Receipt,
   History,
   Printer,
-  ChevronRight
+  ChevronRight,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, recordExpense } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
@@ -68,6 +70,8 @@ export default function HRManagement() {
   const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
   const [newDeptName, setNewDeptName] = useState('');
   const [showAddDept, setShowAddDept] = useState(false);
+  const [staffView, setStaffView] = useState<'kanban' | 'list'>('kanban');
+  const [deptSearch, setDeptSearch] = useState('');
 
   useEffect(() => {
     const qE = query(collection(db, 'employees'), orderBy('name'));
@@ -920,18 +924,38 @@ export default function HRManagement() {
             <div className="flex items-center gap-4 mb-8">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-church-gray w-4 h-4" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Search staff by name or role..."
                   className="w-full pl-12 pr-6 py-4 rounded-2xl bg-church-soft/50 border-2 border-transparent focus:border-church-blue/20 transition-all font-bold text-sm"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
+              {activeTab === 'employees' && (
+                <div className="flex items-center gap-1 bg-church-soft p-1 rounded-xl border border-church-blue/10">
+                  <button
+                    onClick={() => setStaffView('kanban')}
+                    title="Card view"
+                    className={cn('p-2.5 rounded-lg transition-all', staffView === 'kanban' ? 'bg-white shadow-sm text-church-blue' : 'text-church-gray hover:text-church-black')}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setStaffView('list')}
+                    title="List view"
+                    className={cn('p-2.5 rounded-lg transition-all', staffView === 'list' ? 'bg-white shadow-sm text-church-blue' : 'text-church-gray hover:text-church-black')}
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'employees' ? (
+            <>
+            {staffView === 'kanban' ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {employees.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.role.toLowerCase().includes(searchTerm.toLowerCase())).map(employee => (
                 <motion.div 
@@ -1019,6 +1043,68 @@ export default function HRManagement() {
                 </motion.div>
               ))}
             </div>
+            ) : (
+            <div className="bg-white rounded-[32px] border border-church-blue/5 shadow-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[820px]">
+                  <thead>
+                    <tr className="bg-church-blue text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
+                      <th className="px-6 py-5 text-left">Staff Member</th>
+                      <th className="px-6 py-5">Department</th>
+                      <th className="px-6 py-5 text-right">Monthly Salary</th>
+                      <th className="px-6 py-5">Status</th>
+                      <th className="px-6 py-5">Joined</th>
+                      <th className="px-6 py-5">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-church-soft">
+                    {employees.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.role.toLowerCase().includes(searchTerm.toLowerCase())).map(employee => (
+                      <tr key={employee.id} className="hover:bg-church-soft/20 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-church-blue text-white flex items-center justify-center font-black text-sm flex-shrink-0">
+                              {employee.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-church-black flex items-center gap-1.5 flex-wrap">
+                                {employee.name}
+                                {employee.isDepartmentHead && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-black">HEAD</span>}
+                              </div>
+                              <div className="text-[10px] text-church-blue font-black uppercase tracking-wider">{employee.role}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-church-gray font-medium">{employee.department}</td>
+                        <td className="px-6 py-4 text-right font-black text-church-blue text-sm">{formatCurrency(employee.salary)}</td>
+                        <td className="px-6 py-4">
+                          <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest',
+                            employee.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                          )}>{employee.status}</span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-church-gray font-medium">{employee.joinedDate}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1">
+                            {employee.status === 'Active' && getMonthBalance(employee.id!, new Date().toISOString().slice(0, 7)) > 0 && (
+                              <button onClick={() => handlePayStaff(employee)} title="Pay salary" className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all">
+                                <DollarSign className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button onClick={() => handleEditEmployee(employee)} title="Edit contract" className="p-1.5 bg-church-yellow/20 text-church-black rounded-lg hover:bg-church-yellow transition-all">
+                              <Briefcase className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => { setSelectedStaffForHistory(employee); setShowHistoryModal(true); }} title="Payment history" className="p-1.5 bg-church-soft text-church-blue rounded-lg hover:bg-church-blue hover:text-white transition-all">
+                              <History className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            )}
+            </>
           ) : activeTab === 'payroll' ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left min-w-[640px]">
@@ -1104,8 +1190,19 @@ export default function HRManagement() {
             </div>
           ) : (
             <div className="space-y-8">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h4 className="text-lg font-black text-church-black">Ministry Departments</h4>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-church-gray w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search departments..."
+                      value={deptSearch}
+                      onChange={e => setDeptSearch(e.target.value)}
+                      className="pl-9 pr-4 py-2.5 rounded-xl bg-church-soft border-2 border-transparent focus:border-church-blue/20 text-sm font-medium transition-all w-52"
+                    />
+                  </div>
                 <div className="flex gap-2">
                   {departments.length === 0 && (
                     <button 
@@ -1117,13 +1214,14 @@ export default function HRManagement() {
                       Initialize Defaults
                     </button>
                   )}
-                  <button 
+                  <button
                     onClick={() => setShowAddDept(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:scale-105 transition-all"
                   >
                     <Plus className="w-4 h-4" />
                     Add Department
                   </button>
+                </div>
                 </div>
               </div>
 
@@ -1137,7 +1235,7 @@ export default function HRManagement() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {departments.map(dept => {
+                  {departments.filter(d => d.name.toLowerCase().includes(deptSearch.toLowerCase())).map(dept => {
                     const head = employees.find(e => e.department === dept.name && e.isDepartmentHead);
                     const deptStaff = employees.filter(e => e.department === dept.name);
                     return (

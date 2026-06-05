@@ -22,6 +22,7 @@ export interface Residence {
 export interface Zone {
   id: string;
   name: string;
+  code?: string;
   description?: string;
   createdAt: string;
   updatedAt?: string;
@@ -30,6 +31,7 @@ export interface Zone {
 export interface Cell {
   id: string;
   name: string;
+  code?: string;
   zoneId: string;
   zoneName: string;
   description?: string;
