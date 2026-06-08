@@ -349,7 +349,7 @@ export default function LandingPage() {
                     </div>
                     <h3 className="font-bold text-white text-base">{mod.name}</h3>
                   </div>
-                  <p className="text-blue-200 text-sm leading-relaxed">{mod.desc}</p>
+                  <p className="text-blue-200 text-xl leading-relaxed">{mod.desc}</p>
                 </div>
               ))}
             </div>

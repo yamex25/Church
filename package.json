@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "NODE_ENV=production node server.ts",
+    "start": "NODE_EN
+    
+    1]=production node server.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
