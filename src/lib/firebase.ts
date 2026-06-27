@@ -9,7 +9,6 @@ import {
   query,
   where,
   getDocs,
-  Timestamp,
 } from 'firebase/firestore';
 import { Expense, FinanceRecord, ExpenseType } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -18,14 +17,14 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
-// Connectivity Test (Disabled module-level to prevent unhandled rejections)
+// Connectivity Test
 export async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log('Firebase connection verified');
     return true;
   } catch (error) {
-    console.error("Firebase connection check failed:", error);
+    console.error('Firebase connection check failed:', error);
     return false;
   }
 }
@@ -53,7 +52,7 @@ export interface FirestoreErrorInfo {
       providerId?: string | null;
       email?: string | null;
     }[];
-  }
+  };
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
@@ -65,94 +64,98 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
       emailVerified: auth.currentUser?.emailVerified,
       isAnonymous: auth.currentUser?.isAnonymous,
       tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
+      providerInfo: auth.currentUser?.providerData?.map(p => ({
+        providerId: p.providerId,
+        email: p.email,
+      })) || [],
     },
     operationType,
-    path
+    path,
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Expense Management Functions
-export async function recordExpense(expense: Omit<Expense, 'id' | 'createdAt'>) {
+// ─── Church-scoped expense/finance helpers ────────────────────────────────────
+// These functions require a churchId so all data stays within the church tenant.
+
+function expensesRef(churchId: string) {
+  return collection(db, 'churches', churchId, 'expenses');
+}
+
+function financeRef(churchId: string) {
+  return collection(db, 'churches', churchId, 'finance');
+}
+
+export async function recordExpense(
+  churchId: string,
+  expense: Omit<Expense, 'id' | 'createdAt' | 'churchId'>,
+) {
   try {
-    const expenseRef = collection(db, 'expenses');
-    const newExpense = {
-      ...expense,
-      createdAt: new Date().toISOString(),
-    };
-    const docRef = await addDoc(expenseRef, newExpense);
+    const newExpense = { ...expense, churchId, createdAt: new Date().toISOString() };
+    const docRef = await addDoc(expensesRef(churchId), newExpense);
     return { id: docRef.id, ...newExpense };
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, 'expenses');
+    handleFirestoreError(error, OperationType.CREATE, `churches/${churchId}/expenses`);
   }
 }
 
-export async function getExpensesByDateRange(startDate: string, endDate: string) {
+export async function getExpensesByDateRange(
+  churchId: string,
+  startDate: string,
+  endDate: string,
+) {
   try {
-    const expenseRef = collection(db, 'expenses');
     const q = query(
-      expenseRef,
+      expensesRef(churchId),
       where('date', '>=', startDate),
-      where('date', '<=', endDate)
+      where('date', '<=', endDate),
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'expenses');
+    handleFirestoreError(error, OperationType.LIST, `churches/${churchId}/expenses`);
   }
 }
 
-export async function getExpensesByType(type: ExpenseType) {
+export async function getExpensesByType(churchId: string, type: ExpenseType) {
   try {
-    const expenseRef = collection(db, 'expenses');
-    const q = query(expenseRef, where('type', '==', type));
+    const q = query(expensesRef(churchId), where('type', '==', type));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'expenses');
+    handleFirestoreError(error, OperationType.LIST, `churches/${churchId}/expenses`);
   }
 }
 
-export async function getAllExpenses() {
+export async function getAllExpenses(churchId: string) {
   try {
-    const expenseRef = collection(db, 'expenses');
-    const snapshot = await getDocs(expenseRef);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+    const snapshot = await getDocs(expensesRef(churchId));
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'expenses');
+    handleFirestoreError(error, OperationType.LIST, `churches/${churchId}/expenses`);
   }
 }
 
-export async function getAllIncome() {
+export async function getAllIncome(churchId: string) {
   try {
-    const financeRef = collection(db, 'finance');
-    const snapshot = await getDocs(financeRef);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FinanceRecord));
+    const snapshot = await getDocs(financeRef(churchId));
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FinanceRecord));
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'finance');
+    handleFirestoreError(error, OperationType.LIST, `churches/${churchId}/finance`);
   }
 }
 
-export async function calculateBalance() {
+export async function calculateBalance(churchId: string) {
   try {
-    const expenses = await getAllExpenses();
-    const income = await getAllIncome();
-
-    const totalExpenses = expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
-    const totalIncome = income?.reduce((sum, rec) => sum + rec.amount, 0) || 0;
-
-    return {
-      totalIncome,
-      totalExpenses,
-      balance: totalIncome - totalExpenses,
-    };
+    const [expenses, income] = await Promise.all([
+      getAllExpenses(churchId),
+      getAllIncome(churchId),
+    ]);
+    const totalExpenses = expenses?.reduce((sum, e) => sum + e.amount, 0) ?? 0;
+    const totalIncome = income?.reduce((sum, r) => sum + r.amount, 0) ?? 0;
+    return { totalIncome, totalExpenses, balance: totalIncome - totalExpenses };
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, 'balance-calculation');
+    handleFirestoreError(error, OperationType.GET, `churches/${churchId}/balance`);
   }
 }
-

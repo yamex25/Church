@@ -1,0 +1,254 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Global helpers ────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Safely fetch the calling user's profile document.
+    // Returns {} (empty map) if the document doesn't exist yet (first sign-in).
+    function userProfileData() {
+      let u = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return u != null ? u.data : {};
+    }
+
+    // The church ID stored on the caller's profile ('' if not set)
+    function callerChurchId() {
+      return userProfileData().get('churchId', '');
+    }
+
+    // The role stored on the caller's profile
+    function callerRole() {
+      return userProfileData().get('role', '');
+    }
+
+    // True when:
+    //   - the caller is authenticated
+    //   - the caller's churchId is non-empty (they have a church)
+    //   - it matches the document's churchId
+    function inChurch(churchId) {
+      return isSignedIn()
+          && callerChurchId() != ''
+          && callerChurchId() == churchId;
+    }
+
+    // Role hierarchy helpers
+    function isSuperAdmin(churchId) {
+      return inChurch(churchId) && callerRole() == 'SUPER_ADMIN';
+    }
+
+    function isAdmin(churchId) {
+      return inChurch(churchId) && callerRole() in ['SUPER_ADMIN', 'ADMIN'];
+    }
+
+    function isDeptHead(churchId) {
+      return inChurch(churchId)
+          && callerRole() in ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD'];
+    }
+
+    function isMember(churchId) {
+      return inChurch(churchId)
+          && callerRole() in ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MEMBER'];
+    }
+
+    // ─── Users collection ──────────────────────────────────────────────────
+    // Top-level so that churchId can be looked up on sign-in.
+
+    match /users/{userId} {
+      // Any signed-in user can read their own profile.
+      // Admins of the same church can read other members' profiles.
+      allow read: if isSignedIn() && (
+          uid() == userId
+          || (callerChurchId() != '' && isAdmin(callerChurchId()))
+      );
+      // A user can create their own profile document (first sign-in).
+      allow create: if isSignedIn() && uid() == userId;
+      // A user can update their own profile, or an admin can update others.
+      allow update: if isSignedIn() && (
+          uid() == userId
+          || (callerChurchId() != '' && isAdmin(callerChurchId()))
+      );
+      // Profiles are never deleted via the client.
+      allow delete: if false;
+    }
+
+    // ─── Churches collection ───────────────────────────────────────────────
+
+    match /churches/{churchId} {
+      // Any member of the church can read the church document.
+      allow read: if inChurch(churchId);
+
+      // Any authenticated user can CREATE a church.
+      // This is required during the initial setup flow, before the user
+      // has a churchId assigned to their profile.
+      allow create: if isSignedIn();
+
+      // Only SUPER_ADMIN of that church can update the church document.
+      allow update: if isSuperAdmin(churchId);
+
+      // Church documents are never deleted via the client.
+      allow delete: if false;
+
+      // ── Sub-collections — all scoped to the parent churchId ──────────────
+
+      // Members
+      match /members/{docId} {
+        allow read:             if isMember(churchId);
+        allow create, update:   if isAdmin(churchId);
+        allow delete:           if isAdmin(churchId);
+      }
+
+      // Finance records
+      match /finance/{docId} {
+        allow read:             if isAdmin(churchId);
+        allow create, update:   if isAdmin(churchId);
+        allow delete:           if isAdmin(churchId);
+      }
+
+      // Expenses
+      match /expenses/{docId} {
+        allow read:             if isAdmin(churchId);
+        allow create, update:   if isAdmin(churchId);
+        allow delete:           if isAdmin(churchId);
+      }
+
+      // Prayer requests
+      // Members can create their own; admins read all; owners update their own.
+      match /prayerRequests/{docId} {
+        allow read: if isAdmin(churchId)
+                 || (isMember(churchId)
+                     && (resource.data.get('isPrivate', false) == false
+                         || resource.data.get('memberId', '') == uid()));
+        allow create: if isMember(churchId);
+        allow update: if isAdmin(churchId)
+                   || (isMember(churchId)
+                       && resource.data.get('memberId', '') == uid());
+        allow delete: if isAdmin(churchId);
+      }
+
+      // Requisitions — dept heads can create; admins approve/decline
+      match /requisitions/{docId} {
+        allow read:   if isDeptHead(churchId);
+        allow create: if isDeptHead(churchId);
+        allow update: if isAdmin(churchId)
+                   || (isDeptHead(churchId)
+                       && resource.data.get('requesterId', '') == uid()
+                       && resource.data.get('status', '') == 'Pending');
+        allow delete: if isAdmin(churchId);
+      }
+
+      // Pledges
+      match /pledges/{docId} {
+        allow read:           if isAdmin(churchId);
+        allow create, update: if isAdmin(churchId);
+        allow delete:         if isAdmin(churchId);
+      }
+
+      // Projects
+      match /projects/{docId} {
+        allow read:                  if isMember(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Services
+      match /services/{docId} {
+        allow read:                  if isMember(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Finance types
+      match /financeTypes/{docId} {
+        allow read:                  if isAdmin(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Visitors
+      match /visitors/{docId} {
+        allow read:           if isAdmin(churchId);
+        allow create, update: if isAdmin(churchId);
+        allow delete:         if isAdmin(churchId);
+      }
+
+      // Broadcasts / announcements
+      match /broadcasts/{docId} {
+        allow read:                  if isMember(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Assets
+      match /assets/{docId} {
+        allow read:                  if isAdmin(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Events and their attendees sub-collection
+      match /events/{docId} {
+        allow read:                  if isMember(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+
+        match /attendees/{attendeeId} {
+          allow read:  if isMember(churchId);
+          // Members can RSVP only for themselves
+          allow write: if isMember(churchId) && attendeeId == uid();
+        }
+      }
+
+      // Attendance
+      match /attendance/{docId} {
+        allow read:           if isAdmin(churchId);
+        allow create, update: if isAdmin(churchId);
+        allow delete:         if isAdmin(churchId);
+      }
+
+      // HR — Employees
+      match /employees/{docId} {
+        allow read:                  if isAdmin(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // HR — Payroll
+      match /payroll/{docId} {
+        allow read:                  if isAdmin(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Departments
+      match /departments/{docId} {
+        allow read:                  if isMember(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // App configurations — only SUPER_ADMIN can write
+      match /configs/{docId} {
+        allow read:  if isMember(churchId);
+        allow write: if isSuperAdmin(churchId);
+      }
+
+      // Zones
+      match /zones/{docId} {
+        allow read:                  if isMember(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Cells
+      match /cells/{docId} {
+        allow read:                  if isMember(churchId);
+        allow create, update, delete: if isAdmin(churchId);
+      }
+
+      // Testimonies
+      match /testimonies/{docId} {
+        allow read:          if isMember(churchId);
+        allow create:        if isMember(churchId);
+        allow update, delete: if isAdmin(churchId);
+      }
+    }
+  }
+}

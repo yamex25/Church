@@ -6,8 +6,8 @@ import { collection, query, orderBy, onSnapshot, doc, setDoc, deleteDoc, getDoc,
 import { useAuth } from '@/src/components/AuthContext';
 import { ChurchEvent } from '@/src/types';
 
-export default function PortalEvents(): JSX.Element {
-  const { user } = useAuth();
+export default function PortalEvents() {
+  const { user, churchId } = useAuth();
   const [events, setEvents] = useState<ChurchEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [rsvpMap, setRsvpMap] = useState<Record<string, boolean>>({});
@@ -17,7 +17,8 @@ export default function PortalEvents(): JSX.Element {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
 
   useEffect(() => {
-    const q = query(collection(db, 'events'), orderBy('date', 'asc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'events'), orderBy('date', 'asc'));
     const unsub = onSnapshot(q, (snap) => {
       setEvents(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as ChurchEvent[]);
       setLoading(false);
@@ -26,17 +27,18 @@ export default function PortalEvents(): JSX.Element {
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
     if (!user || events.length === 0) return;
+    if (!churchId) return;
     let mounted = true;
     (async () => {
       const map: Record<string, boolean> = {};
       await Promise.all(events.map(async (ev) => {
         if (!ev.id) return;
         try {
-          const att = await getDoc(doc(db, 'events', ev.id, 'attendees', user.uid));
+          const att = await getDoc(doc(db, 'churches', churchId!, 'events', ev.id, 'attendees', user.uid));
           map[ev.id] = att.exists();
         } catch (_) {
           map[ev.id] = false;
@@ -45,14 +47,14 @@ export default function PortalEvents(): JSX.Element {
       if (mounted) setRsvpMap(map);
     })();
     return () => { mounted = false; };
-  }, [user, events]);
+  }, [user, events, churchId]);
 
   const toggleRsvp = async (ev: ChurchEvent) => {
     if (!user || !ev.id) return alert('Please sign in to RSVP');
     const evId = ev.id;
     try {
-      const attRef = doc(db, 'events', evId, 'attendees', user.uid);
-      const evRef = doc(db, 'events', evId);
+      const attRef = doc(db, 'churches', churchId!, 'events', evId, 'attendees', user.uid);
+      const evRef = doc(db, 'churches', churchId!, 'events', evId);
       const going = !!rsvpMap[evId];
       if (!going) {
         await setDoc(attRef, { uid: user.uid, displayName: user.displayName || user.email, createdAt: serverTimestamp() });

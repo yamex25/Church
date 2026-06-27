@@ -18,7 +18,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, update
 import { useAuth } from '@/src/components/AuthContext';
 
 export default function DailyExpenseModule() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -40,7 +40,9 @@ export default function DailyExpenseModule() {
   const [newExpense, setNewExpense] = useState(initialExpenseState);
 
   useEffect(() => {
-    const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+    if (!churchId) return;
+
+    const q = query(collection(db, 'churches', churchId, 'expenses'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -53,7 +55,7 @@ export default function DailyExpenseModule() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +63,7 @@ export default function DailyExpenseModule() {
 
     try {
       if (editingExpense) {
-        const docRef = doc(db, 'expenses', editingExpense.id!);
+        const docRef = doc(db, 'churches', churchId!, 'expenses', editingExpense.id!);
         await updateDoc(docRef, {
           ...newExpense,
           amount: Number(newExpense.amount),
@@ -70,7 +72,7 @@ export default function DailyExpenseModule() {
         });
         alert("Expense updated successfully.");
       } else {
-        await recordExpense({
+        await recordExpense(churchId!, {
           type: newExpense.type,
           category: newExpense.category,
           description: newExpense.description,
@@ -103,7 +105,7 @@ export default function DailyExpenseModule() {
   const handleDeleteExpense = async (id: string) => {
     if (!confirm("Are you sure you want to delete this expense?")) return;
     try {
-      await deleteDoc(doc(db, 'expenses', id));
+      await deleteDoc(doc(db, 'churches', churchId!, 'expenses', id));
       alert("Expense deleted successfully.");
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'expenses');

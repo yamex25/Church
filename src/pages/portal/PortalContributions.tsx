@@ -18,7 +18,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp,
 import { FinanceRecord } from '@/src/types';
 
 export default function PortalContributions() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [records, setRecords] = useState<FinanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -34,10 +34,11 @@ export default function PortalContributions() {
 
   useEffect(() => {
     if (!user) return;
+    if (!churchId) return;
 
     // Filter by user email or memberName to get user's contributions
     const q = query(
-      collection(db, 'finance'),
+      collection(db, 'churches', churchId!, 'finance'),
       where('memberName', '==', user.displayName),
       orderBy('date', 'desc')
     );
@@ -54,12 +55,13 @@ export default function PortalContributions() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, churchId]);
 
   // Load contribution configuration/settings
   const [contribSettings, setContribSettings] = useState<any>(null);
   useEffect(() => {
-    const settingsDoc = doc(db, 'configs', 'contributions');
+    if (!churchId) return;
+    const settingsDoc = doc(db, 'churches', churchId!, 'configs', 'contributions');
     const unsubscribeSettings = onSnapshot(settingsDoc, (snap) => {
       if (snap.exists()) setContribSettings(snap.data());
     }, (err) => {
@@ -68,10 +70,11 @@ export default function PortalContributions() {
     });
 
     return () => unsubscribeSettings();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const qMembers = query(collection(db, 'members'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const qMembers = query(collection(db, 'churches', churchId!, 'members'), orderBy('name', 'asc'));
     const unsubscribeMembers = onSnapshot(qMembers, (snapshot) => {
       const memberDocs = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
       setMembers(memberDocs);
@@ -80,7 +83,7 @@ export default function PortalContributions() {
     });
 
     return () => unsubscribeMembers();
-  }, []);
+  }, [churchId]);
 
   const handleMemberNameChange = (value: string) => {
     setMemberNameInput(value);
@@ -168,7 +171,7 @@ export default function PortalContributions() {
         createdAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, 'finance'), contributionData);
+      await addDoc(collection(db, 'churches', churchId!, 'finance'), contributionData);
       
       // Show PIN modal for mobile money confirmation
       setShowPinModal(true);
@@ -214,16 +217,16 @@ export default function PortalContributions() {
       if (flutterwaveData.status === 'success') {
         // Update transaction to completed status
         const q = query(
-          collection(db, 'finance'),
+          collection(db, 'churches', churchId!, 'finance'),
           where('memberName', '==', user.displayName),
           orderBy('date', 'desc'),
           limit(1)
         );
-        
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
           if (!snapshot.empty) {
             const latestDoc = snapshot.docs[0];
-            updateDoc(doc(db, 'finance', latestDoc.id), {
+            updateDoc(doc(db, 'churches', churchId!, 'finance', latestDoc.id), {
               status: 'Completed',
               completedAt: serverTimestamp(),
               flutterwaveTxRef: txRef,

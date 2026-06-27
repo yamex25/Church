@@ -12,6 +12,8 @@ import {
   FileText,
   ShieldCheck,
   AlertCircle,
+  Network,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from './AuthContext';
@@ -114,22 +116,63 @@ function TwoFactorGate() {
   );
 }
 
-const navItems = [
-  { icon: Home, label: 'Portal', path: '/portal' },
-  { icon: User, label: 'Profile', path: '/portal/profile' },
-  { icon: History, label: 'Contributions', path: '/portal/contributions' },
-  { icon: Heart, label: 'Prayer', path: '/portal/prayer-requests' },
-  { icon: FileText, label: 'Requisitions', path: '/portal/requisitions' },
-  { icon: CalendarDays, label: 'Events', path: '/portal/events' },
-  { icon: Church, label: 'Admin Panel', path: '/admin' }, // Added for vetting
+// All possible portal nav items with optional visibility conditions.
+const allNavItems = [
+  { icon: Home,         label: 'Portal',        path: '/portal'                  },
+  { icon: User,         label: 'Profile',        path: '/portal/profile'          },
+  { icon: Network,      label: 'My Cell',        path: '/portal/cell'             },
+  { icon: History,      label: 'Contributions',  path: '/portal/contributions'    },
+  { icon: Heart,        label: 'Prayer',          path: '/portal/prayer-requests' },
+  // Requisitions — Department Heads and above only
+  { icon: FileText,     label: 'Requisitions',   path: '/portal/requisitions', minDeptHead: true },
+  // Finance overview — Finance department employees and accountants
+  { icon: DollarSign,   label: 'Finance',         path: '/portal/finance',      financeOnly: true },
+  { icon: CalendarDays, label: 'Events',          path: '/portal/events'           },
+  // Admin Panel link intentionally removed — Admin and Portal are separate interfaces.
 ];
 
 export default function PortalLayout() {
   const location = useLocation();
-  const { logout, twoFactorEnabled, twoFactorVerified } = useAuth();
+  const {
+    user, logout, twoFactorEnabled, twoFactorVerified,
+    isDeptHead, isAccountant, employeeDepartment,
+  } = useAuth();
+
+  const isFinanceEmployee =
+    isAccountant || /finance|accounts?/i.test(employeeDepartment ?? '');
+
+  // Filter nav items based on role and department
+  const navItems = allNavItems.filter(item => {
+    if ((item as any).minDeptHead)   return isDeptHead;
+    if ((item as any).financeOnly)   return isFinanceEmployee;
+    return true;
+  });
 
   if (twoFactorEnabled && !twoFactorVerified) {
     return <TwoFactorGate />;
+  }
+
+  // Block disabled accounts from accessing the portal
+  if (user?.accountStatus === 'disabled') {
+    return (
+      <div className="min-h-screen bg-church-soft flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
+          <AlertCircle className="w-10 h-10 text-red-400" />
+        </div>
+        <h2 className="text-2xl font-display font-black text-church-black mb-2">Account Disabled</h2>
+        <p className="text-church-gray text-sm max-w-sm mb-6">
+          Your account has been suspended by your church administrator.
+          Please contact your church admin for assistance.
+        </p>
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 text-church-gray text-sm hover:text-red-500 transition px-4 py-2 rounded-xl hover:bg-red-50"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
+      </div>
+    );
   }
 
   const handleNotificationClick = () => {

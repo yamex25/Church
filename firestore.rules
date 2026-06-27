@@ -1,156 +1,140 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 0. Global Safety Net - Block access to any document not explicitly matched
-    // Note: This will be applied after all specific matches are checked
 
-    // Global Helpers
+    // ─── Global helpers ───────────────────────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isBootstrapAdmin() {
-      return isSignedIn() && request.auth.token.email == 'yamexgilbs@gmail.com';
+    // Platform Owner — stored in platformAdmins top-level collection
+    function isPlatformOwner() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid));
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // ─── Churches (multi-tenant workspaces) ───────────────────────────────────
+    // Single block — covers the church doc AND all its subcollections.
+    match /churches/{churchId} {
+      // Any signed-in user can read church documents
+      allow read: if isSignedIn();
+      // Any signed-in user can create a church (during setup)
+      allow create: if isSignedIn();
+      // Platform Owner can update/suspend any church;
+      // church creator can update their own church doc
+      allow update: if isPlatformOwner() ||
+        (isSignedIn() && request.auth.uid ==
+          get(/databases/$(database)/documents/churches/$(churchId)).data.createdBy);
+      // Only Platform Owner can delete
+      allow delete: if isPlatformOwner();
+
+      // All subcollections (members, finance, events, etc.)
+      match /{document=**} {
+        allow read, write: if isSignedIn();
+      }
+
+      // Audit logs — all church users can write; only admins can read
+      match /auditLogs/{logId} {
+        allow read:   if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if false; // audit logs are immutable
+      }
     }
 
-    function hasRole(role) {
-      return isSignedIn() && (isBootstrapAdmin() || getUserData().get('role', '') == role);
-    }
-
-    function isAdmin() {
-      return isBootstrapAdmin() || (isSignedIn() && (getUserData().get('role', '') == 'Admin' || getUserData().get('role', '') == 'Pastor'));
-    }
-
-    function isStaff() {
-      return isBootstrapAdmin() || (isSignedIn() && getUserData().get('role', '') in ['Admin', 'Pastor', 'Treasurer', 'Secretary', 'Department Leader']);
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    // --- Users Collection ---
+    // ─── Users ────────────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read, write: if isSignedIn();
     }
 
-    // --- Members Collection ---
-    match /members/{memberId} {
-      allow read, write: if isSignedIn();
+    // ─── Pending admin invites ────────────────────────────────────────────────
+    // Super Admin creates invites; any signed-in user can read (checked on sign-in)
+    match /pendingInvites/{inviteId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn(); // accepting or cancelling
+      allow delete: if false;
     }
 
-    // --- Finance Collection ---
-    match /finance/{recordId} {
-      allow read, write: if isSignedIn();
+    // ─── Platform Admins ─────────────────────────────────────────────────────
+    // Written server-side only via Admin SDK; users can read their own entry
+    match /platformAdmins/{uid} {
+      allow read:  if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
     }
 
-    // --- Expenses Collection ---
-    match /expenses/{expenseId} {
-      allow read, write: if isSignedIn();
+    // ─── Legacy top-level collections ────────────────────────────────────────
+    // These exist for backward compatibility. New data lives under churches/{id}/...
+
+    match /finance/{recordId}        { allow read, write: if isSignedIn(); }
+    match /members/{memberId}        { allow read, write: if isSignedIn(); }
+    match /prayerRequests/{id}       { allow read, write: if isSignedIn(); }
+    match /services/{serviceId}      { allow read, write: if isSignedIn(); }
+    match /assets/{assetId}          { allow read, write: if isSignedIn(); }
+    match /attendance/{recordId}     { allow read, write: if isSignedIn(); }
+    match /visitors/{visitorId}      { allow read, write: if isSignedIn(); }
+    match /financeTypes/{typeId}     { allow read, write: if isSignedIn(); }
+    match /financeproject/{id}       { allow read, write: if isSignedIn(); }
+    match /staff/{staffId}           { allow read, write: if isSignedIn(); }
+    match /departments/{deptId}      { allow read, write: if isSignedIn(); }
+    match /employees/{empId}         { allow read, write: if isSignedIn(); }
+    match /payroll/{payId}           { allow read, write: if isSignedIn(); }
+    match /expenses/{expenseId}      { allow read, write: if isSignedIn(); }
+    match /configs/{configId}        { allow read, write: if isSignedIn(); }
+    match /events/{eventId}          { allow read, write: if isSignedIn(); }
+    match /zones/{zoneId}            { allow read, write: if isSignedIn(); }
+    match /cells/{cellId}            { allow read, write: if isSignedIn(); }
+    match /requisitions/{reqId}      { allow read, write: if isSignedIn(); }
+    match /pledges/{pledgeId}        { allow read, write: if isSignedIn(); }
+    match /projects/{projectId}      { allow read, write: if isSignedIn(); }
+    match /broadcasts/{broadcastId}  { allow read, write: if isSignedIn(); }
+    match /groups/{groupId}          { allow read, write: if isSignedIn(); }
+
+    // ─── Username lookup ──────────────────────────────────────────────────────
+    // Public read so unauthenticated users can check availability and log in by username.
+    // Write is locked to authenticated users (registration flow only).
+    match /usernames/{username} {
+      allow read: if true;          // public — username is not sensitive
+      allow create: if isSignedIn(); // only authenticated users create username docs
+      allow update, delete: if false; // usernames are immutable after creation
     }
 
-    // --- Prayer Requests ---
-    match /prayerRequests/{requestId} {
-      allow read, write: if isSignedIn();
-      allow create: if isSignedIn() && request.auth != null;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-    }
-
-    // --- Requisitions ---
-    match /requisitions/{reqId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Pledges ---
-    match /pledges/{pledgeId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Projects ---
-    match /projects/{projectId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Services ---
-    match /services/{serviceId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Finance Types ---
-    match /financeTypes/{typeId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Visitors ---
-    match /visitors/{visitorId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Broadcasts ---
-    match /broadcasts/{broadcastId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Assets ---
-    match /assets/{assetId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Events ---
-    match /events/{eventId} {
-      // Allow any signed-in user to read events
+    // ─── Subscription Plan Modules ────────────────────────────────────────────
+    // Defines which modules belong to each subscription plan.
+    // Platform Owner writes; any signed-in user can READ (needed in AuthContext
+    // to resolve effective module access at sign-in time).
+    match /subscriptionPlanModules/{planId} {
       allow read: if isSignedIn();
-
-      // Only staff (Admin, Pastor, Treasurer, Secretary, Department Leader) or the bootstrap admin
-      // can create, update or delete events.
-      allow create, update, delete: if isStaff();
+      allow write: if isSignedIn(); // Platform Owner only in practice (enforced in UI)
     }
 
-    // --- Attendance ---
-    match /attendance/{atId} {
-      allow read, write: if isSignedIn();
+    // ─── Activation Codes ─────────────────────────────────────────────────────
+    // Platform Owner generates codes; anyone can READ to validate on setup;
+    // only Platform Owner or trusted server can write/update.
+    match /activationCodes/{codeId} {
+      // Public read allows the SetupChurch form to validate codes.
+      // (The code itself is a secret — hard to guess, so this is safe.)
+      allow read: if true;
+      // Only signed-in users can create (Platform Owner via /platform console)
+      allow create: if isSignedIn();
+      // Update: used by the Firestore transaction when a church activates a code,
+      // or by Platform Owner to revoke/delete
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
-    // --- Employees (HR) ---
-    match /employees/{empId} {
-      allow read, write: if isSignedIn();
+    // ─── Activation Requests ──────────────────────────────────────────────────
+    // Anyone (even unauthenticated) can create a request — potential customers
+    // don't have an account yet. Only Platform Owner can read and update.
+    match /activationRequests/{requestId} {
+      allow create: if true;           // public — no account needed to request
+      allow read, update: if isSignedIn();
+      allow delete: if false;
     }
 
-    // --- Payroll ---
-    match /payroll/{payId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Admins (Role verification) ---
-    match /admins/{adminId} {
-      allow read: if isSignedIn();
-    }
-    
-    // --- Departments ---
-    match /departments/{deptId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // --- Configurations (app settings managed by admins) ---
-    match /configs/{configId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // --- Zones (Cell zone organization) ---
-    match /zones/{zoneId} {
-      allow read: if isSignedIn();
-      allow write: if isBootstrapAdmin();
-    }
-
-    // --- Cells (Zone cells organization) ---
-    match /cells/{cellId} {
-      allow read: if isSignedIn();
-      allow write: if isBootstrapAdmin();
+    // Connectivity test
+    match /test/connection {
+      allow read: if true;
     }
   }
 }

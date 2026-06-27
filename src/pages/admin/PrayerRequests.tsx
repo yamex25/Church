@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  MessageSquare, 
-  Search, 
-  Filter, 
-  Heart, 
-  CheckCircle2, 
-  Clock, 
-  MoreVertical, 
-  Bell, 
+import {
+  MessageSquare,
+  Search,
+  Filter,
+  Heart,
+  CheckCircle2,
+  Clock,
+  MoreVertical,
+  Bell,
   Smartphone,
   Download,
   Star
@@ -16,8 +16,10 @@ import {
 import { cn, formatDate, downloadExcel } from '@/src/lib/utils';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { useAuth } from '@/src/components/AuthContext';
 
 export default function PrayerRequests() {
+  const { churchId } = useAuth();
   const [viewMode, setViewMode] = useState<'prayer' | 'testimony'>('prayer');
   const [filter, setFilter] = useState('All');
   const [requests, setRequests] = useState<any[]>([]);
@@ -26,7 +28,9 @@ export default function PrayerRequests() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'prayerRequests'), orderBy('createdAt', 'desc'));
+    if (!churchId) return;
+
+    const q = query(collection(db, 'churches', churchId, 'prayerRequests'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -39,10 +43,12 @@ export default function PrayerRequests() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const q = query(collection(db, 'testimonies'), orderBy('createdAt', 'desc'));
+    if (!churchId) return;
+
+    const q = query(collection(db, 'churches', churchId, 'testimonies'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -55,11 +61,11 @@ export default function PrayerRequests() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   const handleMarkAnswered = async (id: string) => {
     try {
-      const docRef = doc(db, 'prayerRequests', id);
+      const docRef = doc(db, 'churches', churchId!, 'prayerRequests', id);
       await updateDoc(docRef, {
         status: 'Answered',
         updatedAt: serverTimestamp()
@@ -177,14 +183,14 @@ export default function PrayerRequests() {
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-sm text-slate-400 uppercase tracking-wider">Overview</h3>
-                <Star className="w-4 h-4 text-amber-500" />
+                <Star className="w-4 h-4 text-church-yellow" />
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-600">Total Testimonies</span>
                   <span className="font-bold text-lg">{testimonies.length}</span>
                 </div>
-                <div className="flex justify-between items-center text-amber-600">
+                <div className="flex justify-between items-center text-church-yellow">
                   <span className="text-sm">Public</span>
                   <span className="font-bold text-lg">{testimonies.filter(t => t.visibility === 'Public').length}</span>
                 </div>
@@ -251,7 +257,7 @@ export default function PrayerRequests() {
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
-                        request.status === 'Pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                        request.status === 'Pending' ? "bg-yellow-100 text-church-yellow" : "bg-emerald-100 text-emerald-700"
                       )}>
                         {request.status}
                       </span>
@@ -295,7 +301,7 @@ export default function PrayerRequests() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 font-bold">
+                      <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-church-yellow font-bold">
                          {testimony.memberName ? testimony.memberName.charAt(0) : 'A'}
                       </div>
                       <div>
@@ -320,7 +326,7 @@ export default function PrayerRequests() {
                       <span className="font-bold uppercase tracking-wider">Date of Occurrence:</span>
                       <span>{testimony.dateOfOccurrence ? new Date(testimony.dateOfOccurrence).toLocaleDateString() : 'Not specified'}</span>
                     </div>
-                    <p className="text-slate-700 leading-relaxed italic border-l-4 border-amber-100 pl-4 mb-4">
+                    <p className="text-slate-700 leading-relaxed italic border-l-4 border-yellow-400 pl-4 mb-4">
                       "{testimony.testimonyText}"
                     </p>
                     {testimony.targetDepartment && (

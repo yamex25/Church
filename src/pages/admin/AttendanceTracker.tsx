@@ -20,7 +20,7 @@ import { GeneralAttendance } from '@/src/types';
 import { cn, formatDate, downloadExcel } from '@/src/lib/utils';
 
 export default function AttendanceTracker() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [history, setHistory] = useState<GeneralAttendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -39,7 +39,8 @@ export default function AttendanceTracker() {
   const [formData, setFormData] = useState(initialFormState);
 
   useEffect(() => {
-    const qS = query(collection(db, 'services'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const qS = query(collection(db, 'churches', churchId, 'services'), orderBy('name', 'asc'));
     const unsubscribeS = onSnapshot(qS, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
       setServices(docs);
@@ -48,7 +49,7 @@ export default function AttendanceTracker() {
       }
     });
 
-    const q = query(collection(db, 'attendance'), orderBy('serviceDate', 'desc'));
+    const q = query(collection(db, 'churches', churchId, 'attendance'), orderBy('serviceDate', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as GeneralAttendance[];
       setHistory(docs);
@@ -60,22 +61,23 @@ export default function AttendanceTracker() {
       unsubscribe();
       unsubscribeS();
     };
-  }, []);
+  }, [churchId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !churchId) return;
     try {
       if (editingRecord) {
-        const docRef = doc(db, 'attendance', editingRecord.id!);
+        const docRef = doc(db, 'churches', churchId, 'attendance', editingRecord.id!);
         await updateDoc(docRef, {
           ...formData,
           updatedAt: serverTimestamp()
         });
         alert("Attendance record updated successfully.");
       } else {
-        await addDoc(collection(db, 'attendance'), {
+        await addDoc(collection(db, 'churches', churchId, 'attendance'), {
           ...formData,
+          churchId,
           recordedBy: user.displayName || user.email || 'Staff',
           createdAt: serverTimestamp()
         });

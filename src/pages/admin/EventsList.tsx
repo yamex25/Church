@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  Plus, 
-  Search, 
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  Plus,
+  Search,
   Users,
   MoreVertical,
   X,
@@ -16,8 +16,10 @@ import { cn, formatDate } from '@/src/lib/utils';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ChurchEvent } from '@/src/types';
+import { useAuth } from '@/src/components/AuthContext';
 
 export default function EventsList() {
+  const { churchId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [events, setEvents] = useState<ChurchEvent[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -36,12 +38,14 @@ export default function EventsList() {
   });
 
   useEffect(() => {
-    const qS = query(collection(db, 'services'), orderBy('name', 'asc'));
+    if (!churchId) return;
+
+    const qS = query(collection(db, 'churches', churchId, 'services'), orderBy('name', 'asc'));
     const unsubscribeS = onSnapshot(qS, (snapshot) => {
       setServices(snapshot.docs.map(d => ({ id: d.id, name: d.data().name })));
     });
 
-    const q = query(collection(db, 'events'), orderBy('date', 'desc'));
+    const q = query(collection(db, 'churches', churchId, 'events'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setEvents(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as ChurchEvent[]);
       setLoading(false);
@@ -50,13 +54,13 @@ export default function EventsList() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   const cancelEvent = async (eventId: string) => {
     const ok = window.confirm('Are you sure you want to cancel this event? This will mark it as cancelled for attendees.');
     if (!ok) return;
     try {
-      await updateDoc(doc(db, 'events', eventId), {
+      await updateDoc(doc(db, 'churches', churchId!, 'events', eventId), {
         status: 'cancelled',
         cancelledAt: serverTimestamp()
       });
@@ -79,8 +83,9 @@ export default function EventsList() {
     }, 10000);
 
     try {
-      await addDoc(collection(db, 'events'), {
+      await addDoc(collection(db, 'churches', churchId!, 'events'), {
         ...newEvent,
+        churchId: churchId!,
         attendees: 0,
         createdAt: serverTimestamp()
       });

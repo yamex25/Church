@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { useAuth } from '@/src/components/AuthContext';
 import { Visitor } from '@/src/types';
 import { cn, formatDate, downloadExcel } from '@/src/lib/utils';
 
@@ -207,6 +208,7 @@ const kampalaLocations = {
 };
 
 export default function VisitorManagement() {
+  const { churchId } = useAuth();
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -283,7 +285,8 @@ export default function VisitorManagement() {
   }, [visitors, selectedYear, selectedMonth]);
 
   useEffect(() => {
-    const q = query(collection(db, 'visitors'), orderBy('createdAt', 'desc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'visitors'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Visitor[];
       setVisitors(docs);
@@ -292,10 +295,11 @@ export default function VisitorManagement() {
       handleFirestoreError(error, OperationType.LIST, 'visitors');
     });
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const qMembers = query(collection(db, 'members'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const qMembers = query(collection(db, 'churches', churchId!, 'members'), orderBy('name', 'asc'));
     const unsubscribeMembers = onSnapshot(qMembers, (snapshot) => {
       const memberDocs = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
       setMembers(memberDocs);
@@ -304,7 +308,7 @@ export default function VisitorManagement() {
     });
 
     return () => unsubscribeMembers();
-  }, []);
+  }, [churchId]);
 
   const handleInvitedByChange = (value: string) => {
     setInvitedByInput(value);
@@ -352,15 +356,16 @@ export default function VisitorManagement() {
 
     try {
       if (editingVisitor) {
-        const docRef = doc(db, 'visitors', editingVisitor.id!);
+        const docRef = doc(db, 'churches', churchId!, 'visitors', editingVisitor.id!);
         await updateDoc(docRef, {
           ...newVisitor,
           updatedAt: serverTimestamp()
         });
         alert("Visitor record updated successfully.");
       } else {
-        await addDoc(collection(db, 'visitors'), {
+        await addDoc(collection(db, 'churches', churchId!, 'visitors'), {
           ...newVisitor,
+          churchId,
           createdAt: serverTimestamp()
         });
         alert("Visitor record created for follow-up.");
@@ -398,7 +403,7 @@ export default function VisitorManagement() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this visitor record?")) return;
     try {
-      await deleteDoc(doc(db, 'visitors', id));
+      await deleteDoc(doc(db, 'churches', churchId!, 'visitors', id));
       alert("Visitor record deleted.");
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'visitors');
@@ -424,10 +429,10 @@ export default function VisitorManagement() {
         createdAt: serverTimestamp(),
       };
 
-      const memberRef = await addDoc(collection(db, 'members'), memberData);
+      const memberRef = await addDoc(collection(db, 'churches', churchId!, 'members'), { ...memberData, churchId });
 
       // 2. Update visitor status
-      await updateDoc(doc(db, 'visitors', visitor.id), { 
+      await updateDoc(doc(db, 'churches', churchId!, 'visitors', visitor.id), {
         status: 'Member',
         convertedMemberId: memberRef.id,
         updatedAt: serverTimestamp()
@@ -442,7 +447,7 @@ export default function VisitorManagement() {
 
   const updateStatus = async (id: string, status: Visitor['status']) => {
     try {
-      await updateDoc(doc(db, 'visitors', id), { 
+      await updateDoc(doc(db, 'churches', churchId!, 'visitors', id), {
         status,
         updatedAt: serverTimestamp()
       });
@@ -643,7 +648,7 @@ export default function VisitorManagement() {
                     <td className="px-6 py-4 text-xs font-medium text-church-gray whitespace-nowrap">{formatDate(visitor.visitationDate)}</td>
                     <td className="px-6 py-4">
                       <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
-                        visitor.status === 'New' ? 'bg-amber-100 text-amber-700' :
+                        visitor.status === 'New' ? 'bg-yellow-100 text-church-yellow' :
                         visitor.status === 'Followed Up' ? 'bg-emerald-100 text-emerald-700' :
                         'bg-church-blue text-white'
                       )}>{visitor.status}</span>
@@ -696,7 +701,7 @@ export default function VisitorManagement() {
                </div>
                <div className={cn(
                  "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border",
-                 visitor.status === 'New' ? "bg-amber-100 text-amber-700 border-amber-200" :
+                 visitor.status === 'New' ? "bg-yellow-100 text-church-yellow border-yellow-400" :
                  visitor.status === 'Followed Up' ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
                  "bg-church-blue text-white border-church-blue"
                )}>

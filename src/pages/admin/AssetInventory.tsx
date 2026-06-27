@@ -23,7 +23,7 @@ import { Asset } from '@/src/types';
 import { cn, formatCurrency, formatDate, downloadExcel } from '@/src/lib/utils';
 
 export default function AssetInventory() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +96,8 @@ export default function AssetInventory() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, 'assets'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'assets'), orderBy('name', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Asset[];
       setAssets(docs);
@@ -105,23 +106,24 @@ export default function AssetInventory() {
       handleFirestoreError(error, OperationType.LIST, 'assets');
     });
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const unsubscribeDepts = onSnapshot(query(collection(db, 'departments'), orderBy('name', 'asc')), (snapshot) => {
+    if (!churchId) return;
+    const unsubscribeDepts = onSnapshot(query(collection(db, 'churches', churchId!, 'departments'), orderBy('name', 'asc')), (snapshot) => {
       setDepartments(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
     });
     return () => unsubscribeDepts();
-  }, []);
+  }, [churchId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'assets', editingId), { ...formData, updatedAt: serverTimestamp() });
+        await updateDoc(doc(db, 'churches', churchId!, 'assets', editingId), { ...formData, updatedAt: serverTimestamp() });
         alert("Asset status updated.");
       } else {
-        await addDoc(collection(db, 'assets'), { ...formData, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'churches', churchId!, 'assets'), { ...formData, churchId, createdAt: serverTimestamp() });
         alert("New asset registered.");
       }
       setShowForm(false);
@@ -135,7 +137,7 @@ export default function AssetInventory() {
   const handleDelete = async (id: string) => {
     if (!confirm("Remove this asset from registry?")) return;
     try {
-      await deleteDoc(doc(db, 'assets', id));
+      await deleteDoc(doc(db, 'churches', churchId!, 'assets', id));
     } catch (error) {
        handleFirestoreError(error, OperationType.DELETE, 'assets');
     }
@@ -384,7 +386,7 @@ export default function AssetInventory() {
             <div className="flex justify-between items-start mb-6">
                <div className={cn(
                  "p-4 rounded-2xl",
-                 asset.condition === 'Good' ? "bg-emerald-50 text-emerald-600" : (asset.condition === 'Fair' ? "bg-yellow-50 text-yellow-600" : "bg-rose-50 text-rose-600")
+                 asset.condition === 'Good' ? "bg-emerald-50 text-emerald-600" : (asset.condition === 'Fair' ? "bg-yellow-50 text-church-yellow" : "bg-rose-50 text-rose-600")
                )}>
                  <Package className="w-6 h-6" />
                </div>

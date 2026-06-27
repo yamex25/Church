@@ -19,6 +19,7 @@ import {
 } from '@/src/lib/qaEngine';
 import { downloadExcel } from '@/src/lib/utils';
 import { cn } from '@/src/lib/utils';
+import { useAuth } from '@/src/components/AuthContext';
 
 // ─── Module card list ─────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ type ConversationItem =
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AskQuestion() {
+  const { churchId } = useAuth();
   const [selectedModule, setSelectedModule] = useState<ModuleType | null>(null);
   const [conversation, setConversation]     = useState<ConversationItem[]>([]);
   const [input, setInput]                   = useState('');
@@ -60,7 +62,7 @@ export default function AskQuestion() {
     setConversation(prev => [...prev, { id, loading: true, question: q }]);
 
     try {
-      const answer = await answerQuestion(q, selectedModule);
+      const answer = await answerQuestion(q, selectedModule, churchId || '');
       setConversation(prev =>
         prev.map(item => item.id === id ? { id, loading: false, answer } : item)
       );
@@ -212,7 +214,7 @@ export default function AskQuestion() {
               {/* Question bubble */}
               <div className="flex justify-end">
                 <div className="max-w-[78%] bg-church-blue text-white px-5 py-3 rounded-3xl rounded-br-lg text-sm font-medium shadow-lg shadow-church-blue/15">
-                  {item.loading ? item.question : item.answer.question}
+                  {item.loading ? item.question : (item as { id: number; loading: false; answer: QAAnswer }).answer.question}
                 </div>
               </div>
 
@@ -233,7 +235,7 @@ export default function AskQuestion() {
               {!item.loading && (
                 <div className="flex items-start gap-3 pl-2">
                   <AssistantAvatar />
-                  <AnswerCard answer={item.answer} />
+                  <AnswerCard answer={(item as { id: number; loading: false; answer: QAAnswer }).answer} />
                 </div>
               )}
             </motion.div>

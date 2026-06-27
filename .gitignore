@@ -9,3 +9,4 @@ coverage/
 # Python virtual environment
 venv/
 .vscode/
+.claude/

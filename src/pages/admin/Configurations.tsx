@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Info, Save, Plus, Trash2, Edit2, X } from 'lucide-react';
+import { Info, Save, Plus, Trash2, Edit2, X, Hash, Copy, CheckCheck } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { doc, onSnapshot, setDoc, collection, query, orderBy, addDoc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/src/components/AuthContext';
 import { Zone, Cell } from '@/src/types';
 
 export default function Configurations() {
-  const { user } = useAuth();
+  const { user, churchId, church } = useAuth();
+  const [codeCopied, setCodeCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<any>({});
@@ -27,18 +28,20 @@ export default function Configurations() {
 
   // Load Contributions Settings
   useEffect(() => {
-    const settingsDoc = doc(db, 'configs', 'contributions');
+    if (!churchId) return;
+    const settingsDoc = doc(db, 'churches', churchId!, 'configs', 'contributions');
     const unsubscribe = onSnapshot(settingsDoc, (snap) => {
       if (snap.exists()) setSettings(snap.data());
       setLoading(false);
     }, (err) => handleFirestoreError(err, OperationType.GET, 'configs/contributions'));
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   // Load Zones
   useEffect(() => {
-    const q = query(collection(db, 'zones'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'zones'), orderBy('name', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -48,11 +51,12 @@ export default function Configurations() {
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'zones'));
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   // Load Cells
   useEffect(() => {
-    const q = query(collection(db, 'cells'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'cells'), orderBy('name', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -62,7 +66,7 @@ export default function Configurations() {
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'cells'));
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   const handleChange = (key: string, value: string) => {
     setSettings((s: any) => ({ ...s, [key]: value }));
@@ -71,7 +75,7 @@ export default function Configurations() {
   const handleSaveContributions = async () => {
     setSaving(true);
     try {
-      const settingsDoc = doc(db, 'configs', 'contributions');
+      const settingsDoc = doc(db, 'churches', churchId!, 'configs', 'contributions');
       await setDoc(settingsDoc, settings, { merge: true });
       setSaving(false);
       alert('Configuration saved.');
@@ -91,9 +95,10 @@ export default function Configurations() {
 
     try {
       setSaving(true);
-      const docRef = await addDoc(collection(db, 'zones'), {
+      const docRef = await addDoc(collection(db, 'churches', churchId!, 'zones'), {
         name: newZoneName.trim(),
         description: newZoneDesc.trim(),
+        churchId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -119,7 +124,7 @@ export default function Configurations() {
 
     try {
       setSaving(true);
-      await updateDoc(doc(db, 'zones', editingZone.id), {
+      await updateDoc(doc(db, 'churches', churchId!, 'zones', editingZone.id), {
         name: newZoneName.trim(),
         description: newZoneDesc.trim(),
         updatedAt: serverTimestamp(),
@@ -141,7 +146,7 @@ export default function Configurations() {
     if (!confirm('Are you sure you want to delete this zone? Any cells under this zone will need to be reassigned.')) return;
     try {
       setSaving(true);
-      await deleteDoc(doc(db, 'zones', zoneId));
+      await deleteDoc(doc(db, 'churches', churchId!, 'zones', zoneId));
       setSaving(false);
       setSelectedZone(null);
       alert('Zone deleted successfully!');
@@ -162,11 +167,12 @@ export default function Configurations() {
 
     try {
       setSaving(true);
-      const docRef = await addDoc(collection(db, 'cells'), {
+      const docRef = await addDoc(collection(db, 'churches', churchId!, 'cells'), {
         name: newCellName.trim(),
         zoneId: selectedZone.id,
         zoneName: selectedZone.name,
         description: newCellDesc.trim(),
+        churchId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -192,7 +198,7 @@ export default function Configurations() {
 
     try {
       setSaving(true);
-      await updateDoc(doc(db, 'cells', editingCell.id), {
+      await updateDoc(doc(db, 'churches', churchId!, 'cells', editingCell.id), {
         name: newCellName.trim(),
         zoneId: selectedZone.id,
         zoneName: selectedZone.name,
@@ -216,7 +222,7 @@ export default function Configurations() {
     if (!confirm('Are you sure you want to delete this cell? Members assigned to this cell will need to be reassigned.')) return;
     try {
       setSaving(true);
-      await deleteDoc(doc(db, 'cells', cellId));
+      await deleteDoc(doc(db, 'churches', churchId!, 'cells', cellId));
       setSaving(false);
       alert('Cell deleted successfully!');
     } catch (error) {
@@ -272,6 +278,16 @@ export default function Configurations() {
           }`}
         >
           Zones & Cells
+        </button>
+        <button
+          onClick={() => setActiveTab('church-info')}
+          className={`px-6 py-4 font-bold text-sm uppercase tracking-widest transition-all ${
+            activeTab === 'church-info'
+              ? 'text-church-blue border-b-2 border-church-blue'
+              : 'text-church-gray hover:text-church-blue'
+          }`}
+        >
+          Church Info
         </button>
       </div>
 
@@ -523,6 +539,66 @@ export default function Configurations() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Church Info Tab ──────────────────────────────────────────────────── */}
+      {activeTab === 'church-info' && (
+        <div className="max-w-2xl space-y-5">
+          {/* Church name & details */}
+          <div className="bg-white rounded-2xl border border-church-blue/10 shadow-sm p-6">
+            <h3 className="font-bold text-church-black text-base mb-4 flex items-center gap-2">
+              <Info className="w-5 h-5 text-church-blue" />
+              Church Details
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between py-2 border-b border-church-soft">
+                <span className="text-church-gray font-medium">Church Name</span>
+                <span className="text-church-black font-bold">{church?.name ?? '—'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-church-soft">
+                <span className="text-church-gray font-medium">Address</span>
+                <span className="text-church-black">{church?.address || '—'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-church-soft">
+                <span className="text-church-gray font-medium">Phone</span>
+                <span className="text-church-black">{church?.phone || '—'}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-church-gray font-medium">Email</span>
+                <span className="text-church-black">{church?.email || '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Church code — for sharing with members */}
+          <div className="bg-gradient-to-br from-church-blue to-church-blue/90 rounded-2xl p-6 text-white shadow-xl shadow-church-blue/20">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-church-yellow text-xs font-bold uppercase tracking-widest">
+                Church Invite Code
+              </p>
+              <Hash className="w-5 h-5 text-church-yellow/50" />
+            </div>
+            <p className="font-mono text-3xl font-black tracking-[0.25em] mt-2 mb-1">
+              {church?.churchCode ?? '—'}
+            </p>
+            <p className="text-blue-200 text-xs mb-4">
+              Share this code with members so they can join your church via the GraceFlow app.
+            </p>
+            <button
+              onClick={() => {
+                const code = church?.churchCode;
+                if (!code) return;
+                navigator.clipboard.writeText(code).then(() => {
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 2000);
+                });
+              }}
+              className="flex items-center gap-2 bg-church-yellow text-church-black px-4 py-2 rounded-xl text-xs font-bold hover:bg-yellow-300 transition-all"
+            >
+              {codeCopied ? <><CheckCheck className="w-3.5 h-3.5" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy Code</>}
+            </button>
           </div>
         </div>
       )}

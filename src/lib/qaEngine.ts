@@ -180,20 +180,20 @@ export function detectQueryIntent(
 
 // ─── Firestore fetchers ───────────────────────────────────────────────────────
 
-async function snap<T>(col: string): Promise<T[]> {
-  const s = await getDocs(collection(db, col));
+async function snap<T>(churchId: string, col: string): Promise<T[]> {
+  const s = await getDocs(collection(db, 'churches', churchId, col));
   return s.docs.map(d => ({ id: d.id, ...d.data() } as T));
 }
 
-async function fetchIncome():       Promise<FinanceRecord[]>     { return snap('finance'); }
-async function fetchExpenses():     Promise<Expense[]>           { return snap('expenses'); }
-async function fetchPledges():      Promise<Pledge[]>            { return snap('pledges'); }
-async function fetchPayroll():      Promise<PayrollRecord[]>     { return snap('payroll'); }
-async function fetchRequisitions(): Promise<Requisition[]>       { return snap('requisitions'); }
-async function fetchAttendance():   Promise<GeneralAttendance[]> { return snap('attendance'); }
-async function fetchMembers():      Promise<Member[]>            { return snap('members'); }
-async function fetchAssets():       Promise<Asset[]>             { return snap('assets'); }
-async function fetchEmployees():    Promise<Employee[]>          { return snap('employees'); }
+async function fetchIncome(churchId: string):       Promise<FinanceRecord[]>     { return snap(churchId, 'finance'); }
+async function fetchExpenses(churchId: string):     Promise<Expense[]>           { return snap(churchId, 'expenses'); }
+async function fetchPledges(churchId: string):      Promise<Pledge[]>            { return snap(churchId, 'pledges'); }
+async function fetchPayroll(churchId: string):      Promise<PayrollRecord[]>     { return snap(churchId, 'payroll'); }
+async function fetchRequisitions(churchId: string): Promise<Requisition[]>       { return snap(churchId, 'requisitions'); }
+async function fetchAttendance(churchId: string):   Promise<GeneralAttendance[]> { return snap(churchId, 'attendance'); }
+async function fetchMembers(churchId: string):      Promise<Member[]>            { return snap(churchId, 'members'); }
+async function fetchAssets(churchId: string):       Promise<Asset[]>             { return snap(churchId, 'assets'); }
+async function fetchEmployees(churchId: string):    Promise<Employee[]>          { return snap(churchId, 'employees'); }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -240,7 +240,8 @@ function noRecords(q: string, period: { label: string }, module: string): QAAnsw
 
 export async function answerQuestion(
   rawQuestion: string,
-  moduleHint?: ModuleType | null
+  moduleHint?: ModuleType | null,
+  churchId?: string
 ): Promise<QAAnswer> {
   const q = rawQuestion.toLowerCase().trim();
   const period = parsePeriod(q);
@@ -252,7 +253,7 @@ export async function answerQuestion(
     || /attend|how many (people|persons|souls|members|folks) (came|were|attended|showed up)|how many came|how many showed up|how many were in church|present at (the )?service|service (attendance|count)|first timer|turnout|congregation (count|today|this|last)|how full was|how many worshipper|people in church|service head ?count|last service|recent service|church service/.test(q);
 
   if (isAttendanceQ) {
-    const records = await fetchAttendance();
+    const records = await fetchAttendance(churchId || '');
 
     // NO DATE GIVEN → show the most recent service (not a dump of everything)
     if (period.isAllTime) {
@@ -357,7 +358,7 @@ export async function answerQuestion(
     || /\bhow many members\b|total members?|member count|active members?|new members?|how many people (are|in) (the church|our church|registered)|church membership|membership count|church size|total congregation|how many (brothers|sisters)|how many registered|registered members|church population|how many (people are|persons are) (in|registered)/.test(q);
 
   if (isMembersQ) {
-    const members = await fetchMembers();
+    const members = await fetchMembers(churchId || '');
     const active  = members.filter(m => m.membershipStatus === MembershipStatus.ACTIVE);
 
     // New members in period
@@ -431,7 +432,7 @@ export async function answerQuestion(
     || /\basset\b|inventory|how many (asset|item|equipment|vehicle|furniture|thing|propert)|total (asset|inventory|worth|value of)|what (asset|equipment|vehicle)|our property|church property|what do we own|church resource|how many (car|truck|computer|chair|table|instrument|building)/.test(q);
 
   if (isAssetsQ) {
-    const assets     = await fetchAssets();
+    const assets     = await fetchAssets(churchId || '');
     const totalValue = assets.reduce((s, a) => s + (a.value || 0), 0);
     const byCategory: Record<string, { count: number; value: number }> = {};
     assets.forEach(a => {
@@ -498,7 +499,7 @@ export async function answerQuestion(
   if (isPayrollQ) {
     // EMPLOYEE COUNT / LIST query
     if (/how many (employ|staff\b|worker|people (work|are employed))|staff count|employee count|total (staff|employee|worker)|number of (staff|employ)|how many people work|our employees|list.*staff|list.*employ/.test(q)) {
-      const employees = await fetchEmployees();
+      const employees = await fetchEmployees(churchId || '');
       const active     = employees.filter(e => e.status === 'Active');
       const onLeave    = employees.filter(e => e.status === 'On Leave');
       const terminated = employees.filter(e => e.status === 'Terminated');
@@ -527,7 +528,7 @@ export async function answerQuestion(
 
     // TOTAL SALARY BILL from employee records (expected monthly cost)
     if (/salary bill|monthly (pay|salary|wage)|total (monthly|annual) (salary|pay|wage)|how much.*a month|annual salary/.test(q)) {
-      const employees = await fetchEmployees();
+      const employees = await fetchEmployees(churchId || '');
       const active    = employees.filter(e => e.status === 'Active');
       const monthly   = active.reduce((s, e) => s + (e.salary || 0), 0);
       const annual    = monthly * 12;
@@ -545,7 +546,7 @@ export async function answerQuestion(
     }
 
     // PAYROLL RECORDS query — use month field for filtering (most reliable)
-    const payroll  = await fetchPayroll();
+    const payroll  = await fetchPayroll(churchId || '');
     const filtered = payroll.filter(p => period.filter(payrollDateStr(p)));
     const totalDue  = filtered.reduce((s, p) => s + p.totalSalary, 0);
     const totalPaid = filtered.reduce((s, p) => s + p.paidAmount, 0);
@@ -620,7 +621,7 @@ export async function answerQuestion(
     || /\bpledge\b|how much (has been|have people) pledged|project commitment|project fund/.test(q);
 
   if (isPledgeQ) {
-    const pledges   = await fetchPledges();
+    const pledges   = await fetchPledges(churchId || '');
     const fulfilled = pledges.filter(p => p.status === 'Fulfilled');
     const pending   = pledges.filter(p => p.status === 'Pending');
     const total     = pledges.reduce((s, p) => s + p.amount, 0);
@@ -663,7 +664,7 @@ export async function answerQuestion(
     || /\brequisition\b|department (request|need)|pending (approval|request)|approved request|what (request|need) is pending/.test(q);
 
   if (isReqQ) {
-    const reqs    = await fetchRequisitions();
+    const reqs    = await fetchRequisitions(churchId || '');
     const pending  = reqs.filter(r => r.status === RequisitionStatus.PENDING);
     const approved = reqs.filter(r => r.status === RequisitionStatus.APPROVED);
     const declined = reqs.filter(r => r.status === RequisitionStatus.DECLINED);
@@ -695,7 +696,7 @@ export async function answerQuestion(
   // FINANCE: Treasury / Balance
   // ═══════════════════════════════════════════════════════════════
   if (/treasury|how much (money|funds|cash) (do we have|is (there|available))|available (balance|fund|money)|current balance|what.?s (our|the) balance|how much (is in the|do we have in)|net balance|bank balance|our funds|church funds|how much cash|check.*(balance|fund)/.test(q)) {
-    const [income, expenses] = await Promise.all([fetchIncome(), fetchExpenses()]);
+    const [income, expenses] = await Promise.all([fetchIncome(churchId || ''), fetchExpenses(churchId || '')]);
     const totalIncome   = income.reduce((s, r) => s + r.amount, 0);
     const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
     const balance       = totalIncome - totalExpenses;
@@ -718,7 +719,7 @@ export async function answerQuestion(
   // FINANCE: Tithe
   // ═══════════════════════════════════════════════════════════════
   if (/\btithe\b/.test(q)) {
-    const income   = await fetchIncome();
+    const income   = await fetchIncome(churchId || '');
     // Default to current month if no date given
     const activePeriod = period.isAllTime
       ? { ...parsePeriod('this month'), label: 'this month' }
@@ -748,7 +749,7 @@ export async function answerQuestion(
   // FINANCE: Offering
   // ═══════════════════════════════════════════════════════════════
   if (/\boffering\b/.test(q)) {
-    const income   = await fetchIncome();
+    const income   = await fetchIncome(churchId || '');
     const activePeriod = period.isAllTime ? { ...parsePeriod('this month'), label: 'this month' } : period;
     const filtered = income.filter(r => r.type === TransactionType.OFFERING && activePeriod.filter(r.date));
     const total    = filtered.reduce((s, r) => s + r.amount, 0);
@@ -775,7 +776,7 @@ export async function answerQuestion(
   // FINANCE: Donation
   // ═══════════════════════════════════════════════════════════════
   if (/\bdonation\b|\bdonate\b/.test(q)) {
-    const income   = await fetchIncome();
+    const income   = await fetchIncome(churchId || '');
     const filtered = income.filter(r => r.type === TransactionType.DONATION && period.filter(r.date));
     const total    = filtered.reduce((s, r) => s + r.amount, 0);
     return {
@@ -800,7 +801,7 @@ export async function answerQuestion(
     /expense|how much (have we|did we) spend|spending|expenditure|how much (we spent|was spent|did we pay out)|daily cost|running cost|operational cost|overhead|what did we spend|money (we spent|that went out)|outflow/.test(q)
     || moduleHint === 'finance' && /spend|cost|pay/.test(q)
   ) {
-    const expenses    = await fetchExpenses();
+    const expenses    = await fetchExpenses(churchId || '');
     const specificType = matchExpenseType(q);
     const activePeriod = period.isAllTime ? { ...parsePeriod('this month'), label: 'this month' } : period;
 
@@ -845,7 +846,7 @@ export async function answerQuestion(
     /total income|how much (have we|did we) (receive|collect|get|make)|income (this|last|in|for)|contribution|how much came in|total collection|how much money (came|received|did we receive|did we get)|what did we receive|what came in|revenue this|income report/.test(q)
     || (moduleHint === 'finance' && !/expense|spent|spend/.test(q))
   ) {
-    const income   = await fetchIncome();
+    const income   = await fetchIncome(churchId || '');
     const activePeriod = period.isAllTime ? { ...parsePeriod('this month'), label: 'this month' } : period;
     const filtered = income.filter(r => activePeriod.filter(r.date));
     const total    = filtered.reduce((s, r) => s + r.amount, 0);
@@ -876,7 +877,7 @@ export async function answerQuestion(
   if (/summary|report|overview|financial (status|picture|health)|how are we doing financially|full (financial )?report|finance summary/.test(q)) {
     const activePeriod = period.isAllTime ? { ...parsePeriod('this month'), label: 'this month' } : period;
     const [income, expenses, pledges, payroll] = await Promise.all([
-      fetchIncome(), fetchExpenses(), fetchPledges(), fetchPayroll(),
+      fetchIncome(churchId || ''), fetchExpenses(churchId || ''), fetchPledges(churchId || ''), fetchPayroll(churchId || ''),
     ]);
     const fInc = income.filter(r => activePeriod.filter(r.date));
     const fExp = expenses.filter(e => activePeriod.filter(e.date));

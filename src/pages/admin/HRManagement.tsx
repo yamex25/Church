@@ -21,13 +21,47 @@ import {
   List
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, recordExpense } from '@/src/lib/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
-import { Employee, PayrollRecord, ExpenseType } from '@/src/types';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, where, getDocs } from 'firebase/firestore';
+import { Employee, PayrollRecord, ExpenseType, UserRole } from '@/src/types';
 import { formatCurrency, cn, formatDate, downloadExcel } from '@/src/lib/utils';
 import { useAuth } from '@/src/components/AuthContext';
+import { logAudit, AUDIT_ACTIONS } from '@/src/lib/audit';
+
+/**
+ * When an employee's isDepartmentHead status changes, immediately sync the
+ * role on their GraceFlow user account (if they already have one).
+ */
+async function syncHodUserRole(
+  email: string,
+  churchId: string,
+  isDeptHead: boolean,
+): Promise<void> {
+  try {
+    const q = query(
+      collection(db, 'users'),
+      where('email', '==', email),
+      where('churchId', '==', churchId),
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return; // user hasn't signed up yet; AuthContext will detect on sign-in
+
+    const userSnap = snap.docs[0];
+    const currentRole = userSnap.data().role as UserRole;
+
+    // Never downgrade ADMIN / SUPER_ADMIN
+    if (currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.ADMIN) return;
+
+    const targetRole = isDeptHead ? UserRole.DEPARTMENT_HEAD : UserRole.MEMBER;
+    if (currentRole !== targetRole) {
+      await updateDoc(userSnap.ref, { role: targetRole });
+    }
+  } catch (e) {
+    console.warn('Could not sync HOD role for', email, e);
+  }
+}
 
 export default function HRManagement() {
-  const { user } = useAuth();
+  const { user, churchId, isSuperAdmin, hasAction } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,19 +77,28 @@ export default function HRManagement() {
   const [activeTab, setActiveTab] = useState<'employees' | 'payroll' | 'departments'>('employees');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const initialEmployeeState = {
+  const initialEmployeeState: {
+    name: string; role: string; department: string; email: string; phone: string;
+    salary: number; status: 'Active' | 'On Leave' | 'Terminated';
+    joinedDate: string; isDepartmentHead: boolean; isAccountant: boolean;
+    bankDetails: string; tinNumber: string;
+  } = {
     name: '',
     role: '',
     department: 'Administration',
     email: '',
     phone: '',
     salary: 0,
-    status: 'Active' as const,
+    status: 'Active',
     joinedDate: new Date().toISOString().split('T')[0],
     isDepartmentHead: false,
+    isAccountant: false,
     bankDetails: '',
     tinNumber: ''
   };
+
+  const isFinanceDept = (dept: string) =>
+    /finance|accounts?|accounting/i.test(dept);
 
   const [newEmployee, setNewEmployee] = useState(initialEmployeeState);
 
@@ -74,21 +117,23 @@ export default function HRManagement() {
   const [deptSearch, setDeptSearch] = useState('');
 
   useEffect(() => {
-    const qE = query(collection(db, 'employees'), orderBy('name'));
+    if (!churchId) return;
+
+    const qE = query(collection(db, 'churches', churchId, 'employees'), orderBy('name'));
     const unsubscribeE = onSnapshot(qE, (snapshot) => {
       setEmployees(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Employee[]);
     }, (err) => {
       console.error("Employee listener error:", err);
     });
 
-    const qP = query(collection(db, 'payroll'), orderBy('paymentDate', 'desc'));
+    const qP = query(collection(db, 'churches', churchId, 'payroll'), orderBy('paymentDate', 'desc'));
     const unsubscribeP = onSnapshot(qP, (snapshot) => {
       setPayroll(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as PayrollRecord[]);
     }, (err) => {
       console.error("Payroll listener error:", err);
     });
 
-    const qD = query(collection(db, 'departments'));
+    const qD = query(collection(db, 'churches', churchId, 'departments'));
     const unsubscribeD = onSnapshot(qD, (snapshot) => {
       setDepartments(snapshot.docs.map(d => ({ id: d.id, name: d.data().name })));
       setLoading(false);
@@ -102,7 +147,7 @@ export default function HRManagement() {
       unsubscribeP();
       unsubscribeD();
     };
-  }, []);
+  }, [churchId]);
 
   const groupedPayroll = React.useMemo(() => {
     const groups: { [key: string]: any } = {};
@@ -161,19 +206,29 @@ export default function HRManagement() {
 
     try {
       if (editingEmployee) {
-        const docRef = doc(db, 'employees', editingEmployee.id!);
+        const docRef = doc(db, 'churches', churchId!, 'employees', editingEmployee.id!);
         await updateDoc(docRef, {
           ...newEmployee,
           salary: Number(newEmployee.salary),
           updatedAt: serverTimestamp()
         });
+        // Sync role if HOD status changed
+        const hodChanged = editingEmployee.isDepartmentHead !== newEmployee.isDepartmentHead;
+        if (hodChanged) {
+          await syncHodUserRole(newEmployee.email, churchId!, newEmployee.isDepartmentHead);
+        }
         alert("Staff record updated successfully.");
       } else {
-        await addDoc(collection(db, 'employees'), {
+        await addDoc(collection(db, 'churches', churchId!, 'employees'), {
           ...newEmployee,
+          churchId,
           salary: Number(newEmployee.salary),
           createdAt: serverTimestamp()
         });
+        // If new employee is already a HOD, sync immediately
+        if (newEmployee.isDepartmentHead) {
+          await syncHodUserRole(newEmployee.email, churchId!, true);
+        }
         alert("Staff contract created successfully.");
       }
       setShowAddEmployee(false);
@@ -199,6 +254,7 @@ export default function HRManagement() {
       status: emp.status,
       joinedDate: emp.joinedDate,
       isDepartmentHead: emp.isDepartmentHead,
+      isAccountant: emp.isAccountant ?? false,
       bankDetails: emp.bankDetails || '',
       tinNumber: emp.tinNumber || ''
     });
@@ -271,7 +327,8 @@ export default function HRManagement() {
       const newBalance = Math.round(currentBalance - paymentAmount);
       const finalStatus = newBalance <= 10 ? 'Paid' : 'Partial'; // 10 UGX threshold for settling
 
-      const payrollDocRef = await addDoc(collection(db, 'payroll'), {
+      const payrollDocRef = await addDoc(collection(db, 'churches', churchId!, 'payroll'), {
+        churchId,
         employeeId: emp.id,
         employeeName: emp.name,
         totalSalary: Math.round(Number(emp.salary)),
@@ -286,7 +343,7 @@ export default function HRManagement() {
       });
 
       // Record expense for payroll payment
-      await recordExpense({
+      await recordExpense(churchId!, {
         type: ExpenseType.SALARY,
         category: 'Payroll',
         description: `Salary payment for ${emp.name} - ${newPayroll.month}`,
@@ -296,6 +353,14 @@ export default function HRManagement() {
         recordedBy: user.uid,
       });
       console.log(`✓ Expense automatically recorded - Salary: UGX ${paymentAmount.toLocaleString()} for ${emp.name}`);
+
+      await logAudit(churchId!, user, {
+        module: 'hr',
+        action: AUDIT_ACTIONS.PAYROLL_PROCESSED,
+        entityType: 'payroll',
+        entityId: payrollDocRef.id,
+        details: `Processed payroll for ${emp.name} — ${newPayroll.month}`,
+      });
 
       setShowAddPayroll(false);
       setNewPayroll({
@@ -335,7 +400,8 @@ export default function HRManagement() {
 
         if (currentBalance <= 0) continue; // Already fully paid
 
-        const payrollDocRef = await addDoc(collection(db, 'payroll'), {
+        const payrollDocRef = await addDoc(collection(db, 'churches', churchId!, 'payroll'), {
+          churchId,
           employeeId: emp.id,
           employeeName: emp.name,
           totalSalary: Number(emp.salary),
@@ -350,7 +416,7 @@ export default function HRManagement() {
         });
 
         // Record expense automatically for bulk payroll
-        await recordExpense({
+        await recordExpense(churchId!, {
           type: ExpenseType.SALARY,
           category: 'Payroll',
           description: `Salary payment for ${emp.name} - ${month}`,
@@ -700,13 +766,28 @@ export default function HRManagement() {
 
     setSubmitting(true);
     try {
-      await addDoc(collection(db, 'departments'), {
+      const deptRef = await addDoc(collection(db, 'churches', churchId!, 'departments'), {
+        churchId,
         name: newDeptName.trim(),
         createdAt: serverTimestamp()
       });
+
+      // Auto-create a matching permission group for this department
+      await addDoc(collection(db, 'churches', churchId!, 'groups'), {
+        churchId,
+        name: newDeptName.trim(),
+        modules: [],           // Super Admin assigns modules later in Settings
+        memberUids: [],
+        departmentId: deptRef.id,
+        departmentName: newDeptName.trim(),
+        isAutoCreated: true,
+        createdAt: new Date().toISOString(),
+        createdBy: user?.uid ?? '',
+      });
+
       setNewDeptName('');
       setShowAddDept(false);
-      alert(`Department "${newDeptName}" created successfully.`);
+      alert(`Department "${newDeptName}" created. A matching permission group has been created in Settings → Groups.`);
     } catch (err: any) {
       console.error("Error adding department:", err);
       handleFirestoreError(err, OperationType.CREATE, 'departments');
@@ -725,12 +806,23 @@ export default function HRManagement() {
     let count = 0;
     try {
       for (const d of defaults) {
-        // Simple check to avoid duplicates if possible, though listener will update
         if (departments.some(dept => dept.name === d)) continue;
-        
-        await addDoc(collection(db, 'departments'), {
+        const dRef = await addDoc(collection(db, 'churches', churchId!, 'departments'), {
+          churchId,
           name: d,
           createdAt: serverTimestamp()
+        });
+        // Auto-create permission group
+        await addDoc(collection(db, 'churches', churchId!, 'groups'), {
+          churchId,
+          name: d,
+          modules: [],
+          memberUids: [],
+          departmentId: dRef.id,
+          departmentName: d,
+          isAutoCreated: true,
+          createdAt: new Date().toISOString(),
+          createdBy: user?.uid ?? '',
         });
         count++;
       }
@@ -752,7 +844,7 @@ export default function HRManagement() {
     
     setSubmitting(true);
     try {
-      await deleteDoc(doc(db, 'departments', id));
+      await deleteDoc(doc(db, 'churches', churchId!, 'departments', id));
       alert("Department removed successfully.");
     } catch (err: any) {
       console.error("Error removing department:", err);
@@ -766,6 +858,15 @@ export default function HRManagement() {
   const activeEmployeeCount = employees.filter(e => e.status === 'Active').length;
   const onLeaveCount = employees.filter(e => e.status === 'On Leave').length;
   const terminatedCount = employees.filter(e => e.status === 'Terminated').length;
+
+  const hasPayrollAccess =
+    isSuperAdmin ||
+    hasAction('hr:payroll_view') ||
+    hasAction('hr:payroll_process') ||
+    hasAction('hr:payroll_approve');
+
+  const canProcessPayroll = isSuperAdmin || hasAction('hr:payroll_process');
+  const canApprovePayroll = isSuperAdmin || hasAction('hr:payroll_approve');
 
   return (
     <div className="space-y-8">
@@ -819,9 +920,9 @@ export default function HRManagement() {
               <UserPlus className="w-4 h-4" />
               Add Employee
             </button>
-          ) : (
+          ) : canProcessPayroll ? (
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={handleBulkPayroll}
                 disabled={submitting}
                 className="flex items-center gap-2 bg-church-black text-white px-5 py-2.5 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50"
@@ -829,7 +930,7 @@ export default function HRManagement() {
                 <Zap className="w-4 h-4 text-church-yellow" />
                 Bulk Pay
               </button>
-              <button 
+              <button
                 onClick={() => setShowAddPayroll(true)}
                 className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold hover:shadow-lg transition-all"
               >
@@ -837,7 +938,7 @@ export default function HRManagement() {
                 Pay Salary
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -855,12 +956,12 @@ export default function HRManagement() {
 
         <div className="bg-white p-6 rounded-[32px] border border-church-blue/5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="bg-amber-50 p-3 rounded-2xl">
-              <Briefcase className="w-6 h-6 text-amber-600" />
+            <div className="bg-yellow-50 p-3 rounded-2xl">
+              <Briefcase className="w-6 h-6 text-church-yellow" />
             </div>
           </div>
           <p className="text-church-gray text-[10px] font-black uppercase tracking-widest">On Leave</p>
-          <h3 className="text-3xl font-black mt-1 text-amber-600">{onLeaveCount}</h3>
+          <h3 className="text-3xl font-black mt-1 text-church-yellow">{onLeaveCount}</h3>
         </div>
 
         <div className="bg-white p-6 rounded-[32px] border border-church-blue/5 shadow-sm">
@@ -897,16 +998,18 @@ export default function HRManagement() {
             Staff Directory
             {activeTab === 'employees' && <motion.div layoutId="hrTab" className="absolute bottom-0 left-0 right-0 h-1 bg-church-blue" />}
           </button>
-          <button 
-            onClick={() => setActiveTab('payroll')}
-            className={cn(
-              "flex-1 px-8 py-5 text-sm font-black uppercase tracking-widest transition-all relative",
-              activeTab === 'payroll' ? "text-emerald-600 bg-church-soft/30" : "text-church-gray hover:text-church-black"
-            )}
-          >
-            Payroll History
-            {activeTab === 'payroll' && <motion.div layoutId="hrTab" className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600" />}
-          </button>
+          {hasPayrollAccess && (
+            <button
+              onClick={() => setActiveTab('payroll')}
+              className={cn(
+                "flex-1 px-8 py-5 text-sm font-black uppercase tracking-widest transition-all relative",
+                activeTab === 'payroll' ? "text-emerald-600 bg-church-soft/30" : "text-church-gray hover:text-church-black"
+              )}
+            >
+              Payroll History
+              {activeTab === 'payroll' && <motion.div layoutId="hrTab" className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600" />}
+            </button>
+          )}
           <button 
             onClick={() => setActiveTab('departments')}
             className={cn(
@@ -973,7 +1076,9 @@ export default function HRManagement() {
                         <div className="flex items-center gap-2">
                           <h4 className="font-black text-church-black text-lg">{employee.name}</h4>
                           {employee.isDepartmentHead && (
-                            <span className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-black">HEAD</span>
+                            <span className="bg-church-yellow text-church-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                              ★ DEPT HEAD · Requisitions Access
+                            </span>
                           )}
                         </div>
                         <p className="text-church-blue text-xs font-black uppercase tracking-wider">{employee.role}</p>
@@ -1001,20 +1106,22 @@ export default function HRManagement() {
                   <div className="flex items-center justify-between pt-4 border-t border-church-blue/5">
                     <div className="flex items-center gap-4">
                         {employee.status === 'Active' ? (
-                          getMonthBalance(employee.id!, new Date().toISOString().slice(0, 7)) > 0 ? (
-                            <button 
-                              onClick={() => handlePayStaff(employee)}
-                              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all"
-                            >
-                              <DollarSign className="w-3 h-3" />
-                              Pay Salary
-                            </button>
-                          ) : (
-                            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-church-gray rounded-lg text-[10px] font-black uppercase tracking-widest">
-                              <Zap className="w-3 h-3 text-emerald-500" />
-                              Fully Paid
-                            </div>
-                          )
+                          canProcessPayroll ? (
+                            getMonthBalance(employee.id!, new Date().toISOString().slice(0, 7)) > 0 ? (
+                              <button
+                                onClick={() => handlePayStaff(employee)}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all"
+                              >
+                                <DollarSign className="w-3 h-3" />
+                                Pay Salary
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-church-gray rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                <Zap className="w-3 h-3 text-emerald-500" />
+                                Fully Paid
+                              </div>
+                            )
+                          ) : null
                         ) : (
                           <div className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-rose-100">
                             <X className="w-3 h-3" />
@@ -1068,7 +1175,7 @@ export default function HRManagement() {
                             <div className="min-w-0">
                               <div className="font-bold text-church-black flex items-center gap-1.5 flex-wrap">
                                 {employee.name}
-                                {employee.isDepartmentHead && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-black">HEAD</span>}
+                                {employee.isDepartmentHead && <span className="text-[9px] bg-church-yellow text-church-black px-1.5 py-0.5 rounded font-black">★ DEPT HEAD</span>}
                               </div>
                               <div className="text-[10px] text-church-blue font-black uppercase tracking-wider">{employee.role}</div>
                             </div>
@@ -1084,7 +1191,7 @@ export default function HRManagement() {
                         <td className="px-6 py-4 text-xs text-church-gray font-medium">{employee.joinedDate}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
-                            {employee.status === 'Active' && getMonthBalance(employee.id!, new Date().toISOString().slice(0, 7)) > 0 && (
+                            {canProcessPayroll && employee.status === 'Active' && getMonthBalance(employee.id!, new Date().toISOString().slice(0, 7)) > 0 && (
                               <button onClick={() => handlePayStaff(employee)} title="Pay salary" className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all">
                                 <DollarSign className="w-3.5 h-3.5" />
                               </button>
@@ -1106,6 +1213,17 @@ export default function HRManagement() {
             )}
             </>
           ) : activeTab === 'payroll' ? (
+            !hasPayrollAccess ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                  <CreditCard className="w-8 h-8 text-red-400" />
+                </div>
+                <h4 className="text-lg font-black text-church-black mb-2">No Payroll Access</h4>
+                <p className="text-church-gray text-sm max-w-xs">
+                  You do not have permission to view payroll records. Contact your Super Admin to request access.
+                </p>
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left min-w-[640px]">
                 <thead>
@@ -1148,8 +1266,8 @@ export default function HRManagement() {
                             )}>
                               {bal > 0 ? formatCurrency(bal) : 'SETTLED ✓'}
                             </span>
-                            {bal > 0 && (
-                              <button 
+                            {bal > 0 && canApprovePayroll && (
+                              <button
                                 onClick={() => handleSettleBalance(record)}
                                 className="text-[9px] font-black uppercase text-church-blue flex items-center gap-1 hover:underline mt-1 bg-church-blue/5 px-1.5 py-0.5 rounded"
                               >
@@ -1162,7 +1280,7 @@ export default function HRManagement() {
                         <td className="px-8 py-6">
                           <span className={cn(
                             "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full",
-                            record.status === 'Paid' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700 font-black"
+                            record.status === 'Paid' ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-church-yellow font-black"
                           )}>
                             {record.status === 'Paid' ? 'FULL PAY' : 'PARTIAL'}
                           </span>
@@ -1188,6 +1306,7 @@ export default function HRManagement() {
                 </tbody>
               </table>
             </div>
+            )
           ) : (
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1384,9 +1503,49 @@ export default function HRManagement() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">Appoint as Head?</label>
-                    <div className="flex items-center gap-4 px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent">
-                      <input type="checkbox" id="isHead" className="w-5 h-5 rounded border-2 border-church-blue text-church-blue focus:ring-church-blue/20" checked={newEmployee.isDepartmentHead} onChange={e => setNewEmployee({...newEmployee, isDepartmentHead: e.target.checked})} />
-                      <label htmlFor="isHead" className="text-sm font-bold text-church-black cursor-pointer">Yes, Department Head</label>
+                    <div className="flex items-start gap-4 px-5 py-3 rounded-xl bg-church-soft border-2 border-transparent">
+                      <input type="checkbox" id="isHead" className="w-5 h-5 rounded border-2 border-church-blue text-church-blue focus:ring-church-blue/20 mt-0.5 flex-shrink-0" checked={newEmployee.isDepartmentHead} onChange={e => setNewEmployee({...newEmployee, isDepartmentHead: e.target.checked})} />
+                      <div>
+                        <label htmlFor="isHead" className="text-sm font-bold text-church-black cursor-pointer">Yes, Department Head</label>
+                        {newEmployee.isDepartmentHead && (
+                          <p className="text-[11px] text-church-blue mt-1">
+                            ★ When <strong>{newEmployee.email || 'this person'}</strong> signs into GraceFlow using this email, they will automatically receive <strong>Dept Head</strong> access and see the Requisitions module in their portal.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Accountant checkbox — always visible so any dept can designate an accountant */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-church-gray ml-2">
+                      Accountant Role?
+                    </label>
+                    <div className={`flex items-start gap-4 px-5 py-3 rounded-xl border-2 transition-all ${
+                      newEmployee.isAccountant
+                        ? 'bg-church-yellow/10 border-church-yellow/50'
+                        : 'bg-church-soft border-transparent'
+                    }`}>
+                      <input
+                        type="checkbox"
+                        id="isAccountant"
+                        className="w-5 h-5 rounded border-2 border-yellow-400 mt-0.5 flex-shrink-0 accent-amber-500 cursor-pointer"
+                        checked={newEmployee.isAccountant}
+                        onChange={e => setNewEmployee({ ...newEmployee, isAccountant: e.target.checked })}
+                      />
+                      <div>
+                        <label htmlFor="isAccountant" className="text-sm font-bold text-church-black cursor-pointer">
+                          Yes — this employee is the Church Accountant
+                        </label>
+                        <p className="text-[11px] text-church-gray mt-0.5">
+                          The accountant gives the <strong>final approval</strong> on requisitions and the expense is only recorded after their sign-off.
+                        </p>
+                        {newEmployee.isAccountant && (
+                          <p className="text-[11px] text-church-yellow font-semibold mt-1">
+                            ★ When <strong>{newEmployee.email || 'this person'}</strong> signs in with this email, they will automatically see the Accountant approval controls on all requisitions.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1522,7 +1681,7 @@ export default function HRManagement() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-amber-800 text-[10px] font-bold">
+                <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-400 italic text-church-yellow text-[10px] font-bold">
                   Note: Transactional records are final. Ensure the Payroll Month is correct before confirming.
                 </div>
 
@@ -1749,7 +1908,7 @@ export default function HRManagement() {
                         </div>
                         <div className={cn(
                           "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ml-auto",
-                          record.status === 'Paid' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                          record.status === 'Paid' ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-church-yellow"
                         )}>
                           {record.status}
                         </div>

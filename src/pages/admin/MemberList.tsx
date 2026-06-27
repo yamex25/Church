@@ -206,7 +206,7 @@ const kampalaLocations: {
 
 
 export default function MemberList() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMinistry, setFilterMinistry] = useState('All');
   const [members, setMembers] = useState<Member[]>([]);
@@ -253,7 +253,8 @@ export default function MemberList() {
   const [newMember, setNewMember] = useState(initialMemberState);
 
   useEffect(() => {
-    const q = query(collection(db, 'members'), orderBy('createdAt', 'desc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'members'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -266,10 +267,11 @@ export default function MemberList() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const qDepts = query(collection(db, 'departments'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const qDepts = query(collection(db, 'churches', churchId!, 'departments'), orderBy('name', 'asc'));
     const unsubscribeDepts = onSnapshot(qDepts, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -281,10 +283,11 @@ export default function MemberList() {
     });
 
     return () => unsubscribeDepts();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const qZones = query(collection(db, 'zones'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const qZones = query(collection(db, 'churches', churchId!, 'zones'), orderBy('name', 'asc'));
     const unsubscribeZones = onSnapshot(qZones, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -296,10 +299,11 @@ export default function MemberList() {
     });
 
     return () => unsubscribeZones();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const qCells = query(collection(db, 'cells'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const qCells = query(collection(db, 'churches', churchId!, 'cells'), orderBy('name', 'asc'));
     const unsubscribeCells = onSnapshot(qCells, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -311,7 +315,7 @@ export default function MemberList() {
     });
 
     return () => unsubscribeCells();
-  }, []);
+  }, [churchId]);
 
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,7 +333,7 @@ export default function MemberList() {
 
     try {
       if (editingMember) {
-        await updateDoc(doc(db, 'members', editingMember.id), {
+        await updateDoc(doc(db, 'churches', churchId!, 'members', editingMember.id), {
           ...newMember,
           updatedAt: serverTimestamp(),
           updatedBy: user?.displayName || user?.email || 'Admin'
@@ -338,8 +342,9 @@ export default function MemberList() {
         alert("Member updated successfully!");
       } else {
         // Create new member
-        await addDoc(collection(db, 'members'), {
+        await addDoc(collection(db, 'churches', churchId!, 'members'), {
           ...newMember,
+          churchId,
           createdAt: serverTimestamp(),
           joinedAt: serverTimestamp(),
           categories: [newMember.category]
@@ -402,7 +407,7 @@ export default function MemberList() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to archive this member record? This action is tracked.")) return;
     try {
-      await deleteDoc(doc(db, 'members', id));
+      await deleteDoc(doc(db, 'churches', churchId!, 'members', id));
       alert("Member record archived.");
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'members');
@@ -875,7 +880,7 @@ export default function MemberList() {
                         <span className={cn(
                           "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm shrink-0",
                           member.membershipStatus === MembershipStatus.ACTIVE ? "bg-church-blue text-white border-church-blue" : 
-                          member.membershipStatus === MembershipStatus.LEFT ? "bg-amber-100 text-amber-700 border-amber-200" : 
+                          member.membershipStatus === MembershipStatus.LEFT ? "bg-yellow-100 text-church-yellow border-yellow-400" : 
                           member.membershipStatus === MembershipStatus.DIED ? "bg-slate-100 text-slate-700 border-slate-200" : 
                           "bg-white text-church-gray border-church-blue/10"
                         )}>

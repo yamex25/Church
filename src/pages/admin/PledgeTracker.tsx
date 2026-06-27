@@ -21,7 +21,7 @@ import { Pledge } from '@/src/types';
 import { cn, formatCurrency, formatDate, downloadExcel } from '@/src/lib/utils';
 
 export default function PledgeTracker() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [pledges, setPledges] = useState<Pledge[]>([]);
   const [projects, setProjects] = useState<{id: string, name: string, targetAmount?: number, status?: string, projectId?: string}[]>([]);
   const [projectNameInput, setProjectNameInput] = useState('');
@@ -39,6 +39,7 @@ export default function PledgeTracker() {
   const [newProject, setNewProject] = useState({ name: '', description: '', targetAmount: 0, startDate: '', endDate: '', projectId: '' });
   const [filteredMembers, setFilteredMembers] = useState<{id: string, name: string}[]>([]);
   const [selectedMember, setSelectedMember] = useState<{id: string, name: string} | null>(null);
+  const [selectedProject, setSelectedProject] = useState<{id: string, name: string} | null>(null);
   
   const generateProjectId = (name: string) => `PRJ_${name.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`;
 
@@ -52,7 +53,8 @@ export default function PledgeTracker() {
   });
 
   useEffect(() => {
-    const q = query(collection(db, 'pledges'), orderBy('createdAt', 'desc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'pledges'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Pledge[];
       setPledges(docs);
@@ -61,15 +63,16 @@ export default function PledgeTracker() {
       handleFirestoreError(error, OperationType.LIST, 'pledges');
     });
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const qProjects = query(collection(db, 'projects'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const qProjects = query(collection(db, 'churches', churchId!, 'projects'), orderBy('name', 'asc'));
     const unsubscribeProjects = onSnapshot(qProjects, (snapshot) => {
-      const projectDocs = snapshot.docs.map(doc => ({ 
-        id: doc.id, 
+      const projectDocs = snapshot.docs.map(doc => ({
+        id: doc.id,
         projectId: doc.data().projectId || doc.id,
-        name: doc.data().name, 
+        name: doc.data().name,
         targetAmount: doc.data().targetAmount,
         status: doc.data().status || 'Active'
       }));
@@ -79,7 +82,7 @@ export default function PledgeTracker() {
     });
 
     return () => unsubscribeProjects();
-  }, []);
+  }, [churchId]);
 
   const handleProjectNameChange = (value: string) => {
     setProjectNameInput(value);
@@ -114,18 +117,20 @@ export default function PledgeTracker() {
   };
 
   useEffect(() => {
-    const unsubscribeProjects = onSnapshot(query(collection(db, 'projects'), orderBy('name', 'asc')), (snapshot) => {
+    if (!churchId) return;
+    const unsubscribeProjects = onSnapshot(query(collection(db, 'churches', churchId!, 'projects'), orderBy('name', 'asc')), (snapshot) => {
       setProjects(snapshot.docs.map(doc => ({ id: doc.id, projectId: doc.data().projectId || doc.id, name: doc.data().name })));
     });
     return () => unsubscribeProjects();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const unsubscribeMembers = onSnapshot(query(collection(db, 'members'), orderBy('name', 'asc')), (snapshot) => {
+    if (!churchId) return;
+    const unsubscribeMembers = onSnapshot(query(collection(db, 'churches', churchId!, 'members'), orderBy('name', 'asc')), (snapshot) => {
       setMembers(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
     });
     return () => unsubscribeMembers();
-  }, []);
+  }, [churchId]);
 
   const validateMemberName = (name: string) => {
     if (!name.trim()) return { isValid: false, message: 'Member name is required' };
@@ -189,9 +194,10 @@ export default function PledgeTracker() {
     }
     
     try {
-      await addDoc(collection(db, 'pledges'), {
+      await addDoc(collection(db, 'churches', churchId!, 'pledges'), {
         ...newPledge,
         projectId: newPledge.projectId || undefined,
+        churchId,
         recordedBy: user.displayName || user.email || 'Staff',
         createdAt: serverTimestamp()
       });
@@ -200,8 +206,9 @@ export default function PledgeTracker() {
         memberName: '',
         amount: 0,
         project: 'Sanctuary Project',
+        projectId: '',
         date: new Date().toISOString().split('T')[0],
-        status: 'Pending'
+        status: 'Pending',
       });
       setMemberNameInput('');
       setShowMemberSuggestions(false);
@@ -214,7 +221,7 @@ export default function PledgeTracker() {
 
   const toggleStatus = async (id: string, current: string) => {
     try {
-      const docRef = doc(db, 'pledges', id);
+      const docRef = doc(db, 'churches', churchId!, 'pledges', id);
       await updateDoc(docRef, {
         status: current === 'Pending' ? 'Fulfilled' : 'Pending',
         updatedAt: serverTimestamp()
@@ -484,7 +491,7 @@ export default function PledgeTracker() {
                     updatedAt: serverTimestamp()
                   };
                   
-                  const docRef = await addDoc(collection(db, 'projects'), projectData);
+                  const docRef = await addDoc(collection(db, 'churches', churchId!, 'projects'), { ...projectData, churchId });
                   console.log("Project created with ID:", docRef.id);
                   
                   setShowProjectForm(false);

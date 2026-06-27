@@ -29,11 +29,13 @@ import {
 } from '../../lib/utils';
 import { Expense, FinanceRecord, ExpenseType } from '../../types';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { useAuth } from '@/src/components/AuthContext';
 
 type Period = 'week' | 'month' | 'year';
 type FilterPeriodType = 'month' | 'year';
 
 export default function FinanceDashboard() {
+  const { churchId } = useAuth();
   const [period, setPeriod] = useState<Period>('month');
   const [filterPeriodType, setFilterPeriodType] = useState<FilterPeriodType>('month');
   const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
@@ -96,9 +98,9 @@ export default function FinanceDashboard() {
     try {
       setLoading(true);
       const [incomeData, expenseData, balanceData] = await Promise.all([
-        getAllIncome(),
-        getAllExpenses(),
-        calculateBalance(),
+        getAllIncome(churchId || ''),
+        getAllExpenses(churchId || ''),
+        calculateBalance(churchId || ''),
       ]);
 
       setIncome(incomeData || []);

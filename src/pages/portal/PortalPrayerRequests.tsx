@@ -15,7 +15,7 @@ import { useAuth } from '@/src/components/AuthContext';
 import { PrayerRequest } from '@/src/types';
 
 export default function PortalPrayerRequests() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [newRequest, setNewRequest] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -26,9 +26,10 @@ export default function PortalPrayerRequests() {
 
   useEffect(() => {
     if (!user) return;
+    if (!churchId) return;
 
     const q = query(
-      collection(db, 'prayerRequests'),
+      collection(db, 'churches', churchId!, 'prayerRequests'),
       where('memberName', '==', user.displayName),
       orderBy('createdAt', 'desc')
     );
@@ -47,7 +48,7 @@ export default function PortalPrayerRequests() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, churchId]);
   
   const handleSubmit = async () => {
     console.log('Submit button clicked');
@@ -78,7 +79,7 @@ export default function PortalPrayerRequests() {
 
       console.log('Request data:', requestData);
       
-      const docRef = await addDoc(collection(db, 'prayerRequests'), requestData);
+      const docRef = await addDoc(collection(db, 'churches', churchId!, 'prayerRequests'), requestData);
       console.log('Prayer request submitted with ID:', docRef.id);
       
       // Reset form
@@ -96,7 +97,7 @@ export default function PortalPrayerRequests() {
 
   const markAsAnswered = async (id: string) => {
     try {
-      const docRef = doc(db, 'prayerRequests', id);
+      const docRef = doc(db, 'churches', churchId!, 'prayerRequests', id);
       await updateDoc(docRef, {
         status: 'Answered',
         updatedAt: serverTimestamp()

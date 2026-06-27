@@ -18,7 +18,7 @@ import { db } from '@/src/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 export default function MemberPortal() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [totalGiving, setTotalGiving] = useState(0);
   
   // Get member details
@@ -27,10 +27,11 @@ export default function MemberPortal() {
 
   useEffect(() => {
     if (!user) return;
+    if (!churchId) return;
 
     // Fetch user's contribution total
     const q = query(
-      collection(db, 'finance'),
+      collection(db, 'churches', churchId!, 'finance'),
       where('memberName', '==', user.displayName),
       orderBy('date', 'desc')
     );
@@ -50,7 +51,7 @@ export default function MemberPortal() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, churchId]);
 
   return (
     <div className="space-y-8">

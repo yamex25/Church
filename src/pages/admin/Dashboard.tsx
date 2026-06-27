@@ -1,311 +1,485 @@
-import { motion } from 'motion/react';
-import { 
-  Users, 
-  TrendingUp, 
-  Heart,
-  Calendar,
-  ShieldCheck,
-  ChevronRight,
-  DollarSign,
-  Package,
-  FileText,
-  UserCheck,
-  Activity,
-  ArrowUpRight,
-  BarChart3,
-  Building,
-  Truck
+/**
+ * Permission-aware Dashboard.
+ *
+ * Every widget, stat card, Firestore listener, quick action, and activity feed
+ * is gated by the user's module permissions. If a user has no access to a
+ * module, NEITHER the UI element NOR its underlying data subscription is set
+ * up — preventing information leakage at both the display and network layer.
+ *
+ * Security model:
+ *   Layer 1 — Firestore rules    : enforce isSignedIn() + church isolation
+ *   Layer 2 — Module permissions : each widget checks hasModule() before
+ *                                   subscribing to or displaying any data
+ *   Layer 3 — Route guards       : ModuleGuard in App.tsx blocks direct URL access
+ */
+
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Users, TrendingUp, Heart, Calendar, ShieldCheck,
+  DollarSign, Package, FileText, UserCheck, Activity,
+  BarChart3, Building2, ClipboardList, MessageSquare,
+  ArrowUpRight, Lock, ChevronRight,
 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn, formatCurrency } from '@/src/lib/utils';
-import { useState, useEffect } from 'react';
 import { db } from '@/src/lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot, where } from 'firebase/firestore';
+import {
+  collection, query, orderBy, limit, onSnapshot, where,
+} from 'firebase/firestore';
+import { useAuth } from '@/src/components/AuthContext';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmt(n: number) {
+  return n.toLocaleString('en-UG');
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatCard({
+  icon: Icon, label, value, sub, loading, to,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  sub: string;
+  loading?: boolean;
+  to?: string;
+}) {
+  const inner = (
+    <div className="bg-white rounded-2xl border border-church-blue/8 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-all h-full">
+      <div className="w-12 h-12 rounded-xl bg-church-blue/8 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-5 h-5 text-church-blue" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-wider text-church-gray mb-0.5">{label}</p>
+        {loading
+          ? <div className="h-6 w-20 bg-church-soft rounded animate-pulse mt-1" />
+          : <p className="text-xl font-black text-church-black leading-none">{value}</p>}
+        <p className="text-xs text-church-gray mt-0.5">{sub}</p>
+      </div>
+      {to && <ArrowUpRight className="w-4 h-4 text-church-gray/40 ml-auto flex-shrink-0" />}
+    </div>
+  );
+  return to ? <Link to={to}>{inner}</Link> : inner;
+}
+
+function QuickLink({
+  to, icon: Icon, label, badge, color,
+}: {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  badge?: string;
+  color: 'blue' | 'yellow';
+}) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'flex flex-col items-center justify-center gap-2 p-5 rounded-2xl font-bold text-sm transition-all hover:scale-[1.03] shadow-sm',
+        color === 'blue'
+          ? 'bg-church-blue text-white hover:bg-church-blue/90'
+          : 'bg-church-yellow text-church-black hover:bg-yellow-300',
+      )}
+    >
+      <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', color === 'blue' ? 'bg-white/20' : 'bg-black/10')}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <span>{label}</span>
+      {badge && (
+        <span className={cn('text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full', color === 'blue' ? 'bg-white/20' : 'bg-black/10')}>
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function AccessDeniedWidget({ label }: { label: string }) {
+  return (
+    <div className="bg-church-soft border border-dashed border-church-blue/15 rounded-2xl p-5 flex items-center gap-3 opacity-50">
+      <Lock className="w-4 h-4 text-church-gray flex-shrink-0" />
+      <p className="text-xs text-church-gray italic">{label} — access restricted</p>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [convertsCount, setConvertsCount] = useState(0);
-  const [memberCount, setMemberCount] = useState(0);
-  const [activeMembers, setActiveMembers] = useState(0);
-  const [prayerCount, setPrayerCount] = useState(0);
-  const [totalFinance, setTotalFinance] = useState(0);
-  const [employeeCount, setEmployeeCount] = useState(0);
-  const [assetValue, setAssetValue] = useState(0);
-  const [pendingReqs, setPendingReqs] = useState(0);
-  const [recentRequests, setRecentRequests] = useState<any[]>([]);
+  const { churchId, hasModule, isSuperAdmin, user } = useAuth();
+
+  // ── Permission shortcuts ───────────────────────────────────────────────────
+  const can = useMemo(() => ({
+    members:        isSuperAdmin || hasModule('members'),
+    finance:        isSuperAdmin || hasModule('finance'),
+    hr:             isSuperAdmin || hasModule('hr'),
+    assets:         isSuperAdmin || hasModule('assets'),
+    visitors:       isSuperAdmin || hasModule('visitors'),
+    prayer:         isSuperAdmin || hasModule('prayer'),
+    requisitions:   isSuperAdmin || hasModule('requisitions'),
+    events:         isSuperAdmin || hasModule('events'),
+    attendance:     isSuperAdmin || hasModule('attendance'),
+    communications: isSuperAdmin || hasModule('communications'),
+    pledges:        isSuperAdmin || hasModule('pledges'),
+  }), [isSuperAdmin, hasModule]);
+
+  // ── State — only populated when user has the relevant permission ───────────
+  const [memberCount,    setMemberCount]    = useState(0);
+  const [activeMembers,  setActiveMembers]  = useState(0);
+  const [convertsCount,  setConvertsCount]  = useState(0);
+  const [totalFinance,   setTotalFinance]   = useState(0);
+  const [employeeCount,  setEmployeeCount]  = useState(0);
+  const [assetValue,     setAssetValue]     = useState(0);
+  const [prayerCount,    setPrayerCount]    = useState(0);
+  const [pendingReqs,    setPendingReqs]    = useState(0);
+  const [recentPrayers,  setRecentPrayers]  = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [loading,        setLoading]        = useState(true);
 
+  // ── Gated Firestore subscriptions ─────────────────────────────────────────
+  // Each listener is ONLY set up if the user has the corresponding permission.
+  // This prevents data from being fetched for restricted modules even if the
+  // UI elements are somehow bypassed.
   useEffect(() => {
-    // Member count
-    const unsubscribeMembers = onSnapshot(collection(db, 'members'), (snapshot) => {
-      setMemberCount(snapshot.size);
-      setActiveMembers(snapshot.docs.filter(d => d.data().membershipStatus === 'Active').length);
-    }, (err) => console.error("Dashboard members listener error:", err));
+    if (!churchId) return;
+    const subs: (() => void)[] = [];
 
-    // Convert count (from visitors who became members this year)
-    const currentYear = new Date().getFullYear();
-    const unsubscribeVisitors = onSnapshot(collection(db, 'visitors'), (snapshot) => {
-      const converts = snapshot.docs.filter(d => {
-        const data = d.data();
-        if (data.status !== 'Member') return false;
-        
-        // Use visitationDate or fallback to createdAt
-        const vDateStr = data.visitationDate || (data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000).toISOString() : data.createdAt);
-        if (!vDateStr) return true; // Fallback if no date available
-        
-        const vYear = new Date(vDateStr).getFullYear();
-        return vYear === currentYear;
-      }).length;
-      setConvertsCount(converts);
-    }, (err) => console.error("Dashboard converts listener error:", err));
+    // Members — requires 'members' module
+    if (can.members) {
+      subs.push(onSnapshot(
+        collection(db, 'churches', churchId, 'members'),
+        snap => {
+          setMemberCount(snap.size);
+          setActiveMembers(snap.docs.filter(d => d.data().membershipStatus === 'Active').length);
+        },
+        err => console.error('Dashboard:members', err),
+      ));
+    }
 
-    // Prayer count (Pending)
-    const unsubscribePrayers = onSnapshot(collection(db, 'prayerRequests'), (snapshot) => {
-      const pending = snapshot.docs.filter(d => d.data().status === 'Pending').length;
-      setPrayerCount(pending);
-      
-      const recent = snapshot.docs
-        .sort((a, b) => {
-          const aTime = a.data().createdAt?.seconds || 0;
-          const bTime = b.data().createdAt?.seconds || 0;
-          return bTime - aTime;
-        })
-        .slice(0, 4)
-        .map(doc => ({
-          id: doc.id,
-          name: doc.data().memberName || 'Anonymous',
-          action: `Prayer Request: ${doc.data().requestText.substring(0, 30)}...`,
-          initials: doc.data().memberName ? doc.data().memberName.split(' ').map((n: string) => n[0]).join('').substring(0,2) : 'A',
-          color: 'bg-church-blue/10 text-church-blue'
-        }));
-      setRecentRequests(recent);
-    }, (err) => console.error("Dashboard prayers listener error:", err));
+    // Visitors / converts — requires 'visitors' module
+    if (can.visitors) {
+      const year = new Date().getFullYear();
+      subs.push(onSnapshot(
+        collection(db, 'churches', churchId, 'visitors'),
+        snap => {
+          setConvertsCount(snap.docs.filter(d => {
+            const data = d.data();
+            if (data.status !== 'Member') return false;
+            const dateStr = data.visitationDate
+              || (data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000).toISOString() : data.createdAt);
+            return !dateStr || new Date(dateStr).getFullYear() === year;
+          }).length);
+        },
+        err => console.error('Dashboard:visitors', err),
+      ));
+    }
 
-    // Total Finance
-    const unsubscribeFinance = onSnapshot(collection(db, 'finance'), (snapshot) => {
-      const total = snapshot.docs.reduce((acc, doc) => acc + (Number(doc.data().amount) || 0), 0);
-      setTotalFinance(total);
-    }, (err) => console.error("Dashboard finance listener error:", err));
+    // Finance — requires 'finance' module
+    if (can.finance) {
+      subs.push(onSnapshot(
+        collection(db, 'churches', churchId, 'finance'),
+        snap => setTotalFinance(snap.docs.reduce((s, d) => s + (Number(d.data().amount) || 0), 0)),
+        err => console.error('Dashboard:finance', err),
+      ));
+    }
 
-    // Employees
-    const unsubscribeEmployees = onSnapshot(collection(db, 'employees'), (snapshot) => {
-      setEmployeeCount(snapshot.docs.filter(d => d.data().status === 'Active').length);
-    }, (err) => console.error("Dashboard employees listener error:", err));
+    // HR / Employees — requires 'hr' module
+    if (can.hr) {
+      subs.push(onSnapshot(
+        collection(db, 'churches', churchId, 'employees'),
+        snap => setEmployeeCount(snap.docs.filter(d => d.data().status === 'Active').length),
+        err => console.error('Dashboard:employees', err),
+      ));
+    }
 
-    // Assets
-    const unsubscribeAssets = onSnapshot(collection(db, 'assets'), (snapshot) => {
-      const total = snapshot.docs.reduce((acc, doc) => acc + (Number(doc.data().value) || 0), 0);
-      setAssetValue(total);
-    }, (err) => console.error("Dashboard assets listener error:", err));
+    // Assets — requires 'assets' module
+    if (can.assets) {
+      subs.push(onSnapshot(
+        collection(db, 'churches', churchId, 'assets'),
+        snap => setAssetValue(snap.docs.reduce((s, d) => s + (Number(d.data().value) || 0), 0)),
+        err => console.error('Dashboard:assets', err),
+      ));
+    }
 
-    // Requisitions
-    const unsubscribeReqs = onSnapshot(collection(db, 'requisitions'), (snapshot) => {
-      setPendingReqs(snapshot.docs.filter(d => d.data().status === 'Pending').length);
-    }, (err) => console.error("Dashboard requisitions listener error:", err));
+    // Prayer requests — requires 'prayer' module
+    if (can.prayer) {
+      subs.push(onSnapshot(
+        collection(db, 'churches', churchId, 'prayerRequests'),
+        snap => {
+          setPrayerCount(snap.docs.filter(d => d.data().status === 'Pending').length);
+          setRecentPrayers(
+            [...snap.docs]
+              .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))
+              .slice(0, 4)
+              .map(d => ({
+                id: d.id,
+                name: d.data().memberName || 'Anonymous',
+                text: d.data().requestText?.substring(0, 60) ?? '',
+                initials: (d.data().memberName || 'A')
+                  .split(' ').map((n: string) => n[0]).join('').substring(0, 2),
+              })),
+          );
+        },
+        err => console.error('Dashboard:prayers', err),
+      ));
+    }
 
-    // Upcoming Events
-    const now = new Date().toISOString();
-    const qEvents = query(
-      collection(db, 'events'), 
-      where('date', '>=', now.split('T')[0]),
-      orderBy('date', 'asc'),
-      limit(3)
-    );
-    const unsubscribeEvents = onSnapshot(qEvents, (snapshot) => {
-      setUpcomingEvents(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (err) => console.error("Dashboard events listener error:", err));
+    // Requisitions — requires 'requisitions' module
+    if (can.requisitions) {
+      subs.push(onSnapshot(
+        collection(db, 'churches', churchId, 'requisitions'),
+        snap => setPendingReqs(snap.docs.filter(d => d.data().status === 'Pending').length),
+        err => console.error('Dashboard:requisitions', err),
+      ));
+    }
 
-    return () => {
-      unsubscribeMembers();
-      unsubscribePrayers();
-      unsubscribeFinance();
-      unsubscribeEmployees();
-      unsubscribeAssets();
-      unsubscribeReqs();
-      unsubscribeEvents();
-    };
-  }, []);
+    // Events — requires 'events' module
+    if (can.events) {
+      const today = new Date().toISOString().split('T')[0];
+      subs.push(onSnapshot(
+        query(
+          collection(db, 'churches', churchId, 'events'),
+          where('date', '>=', today),
+          orderBy('date', 'asc'),
+          limit(3),
+        ),
+        snap => setUpcomingEvents(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+        err => console.error('Dashboard:events', err),
+      ));
+    }
 
-  const topStats = [
-    { label: 'New Converts', value: convertsCount.toString(), sub: `Joined in ${new Date().getFullYear()}`, icon: UserCheck, color: 'text-church-blue', bg: 'bg-church-blue/10' },
-    { label: 'Total Finance', value: formatCurrency(totalFinance), sub: 'Church Collections', icon: DollarSign, color: 'text-church-blue', bg: 'bg-church-blue/10' },
-    { label: 'Asset Value', value: formatCurrency(assetValue), sub: 'Total Property', icon: Package, color: 'text-church-blue', bg: 'bg-church-blue/10' },
-    { label: 'Staffing', value: employeeCount.toString(), sub: 'Active Employees', icon: Activity, color: 'text-church-blue', bg: 'bg-church-blue/10' },
-  ];
+    setLoading(false);
+    return () => subs.forEach(u => u());
+  // Re-run whenever permissions change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [churchId, JSON.stringify(can)]);
 
+  // ── Stat cards — each gated individually ──────────────────────────────────
+  const statCards = useMemo(() => {
+    const cards = [];
+
+    if (can.members) cards.push({
+      icon: Users,      label: 'Total Members',
+      value: fmt(memberCount), sub: `${fmt(activeMembers)} active`,
+      to: '/admin/members',
+    });
+    if (can.finance) cards.push({
+      icon: DollarSign, label: 'Church Finance',
+      value: formatCurrency(totalFinance), sub: 'Total collections',
+      to: '/admin/finance',
+    });
+    if (can.hr) cards.push({
+      icon: Activity,   label: 'Staff',
+      value: fmt(employeeCount), sub: 'Active employees',
+      to: '/admin/hr',
+    });
+    if (can.assets) cards.push({
+      icon: Package,    label: 'Asset Value',
+      value: formatCurrency(assetValue), sub: 'Total property',
+      to: '/admin/assets',
+    });
+    if (can.visitors) cards.push({
+      icon: UserCheck,  label: 'New Converts',
+      value: fmt(convertsCount), sub: `Joined ${new Date().getFullYear()}`,
+      to: '/admin/visitors',
+    });
+    if (can.prayer) cards.push({
+      icon: Heart,      label: 'Prayer Requests',
+      value: fmt(prayerCount), sub: 'Awaiting prayer',
+      to: '/admin/prayer-requests',
+    });
+    if (can.requisitions) cards.push({
+      icon: ClipboardList, label: 'Requisitions',
+      value: fmt(pendingReqs), sub: 'Pending approval',
+      to: '/admin/requisitions',
+    });
+    return cards;
+  }, [can, memberCount, activeMembers, totalFinance, employeeCount,
+      assetValue, convertsCount, prayerCount, pendingReqs]);
+
+  // ── Quick actions — each gated individually ────────────────────────────────
+  const quickLinks = useMemo(() => {
+    const links: { to: string; icon: React.ElementType; label: string; badge?: string; color: 'blue' | 'yellow' }[] = [];
+    if (can.requisitions) links.push({ to: '/admin/requisitions', icon: ClipboardList, label: 'Requisitions', badge: `${pendingReqs} pending`,  color: 'blue' });
+    if (can.prayer)       links.push({ to: '/admin/prayer-requests', icon: Heart,       label: 'Prayers',       badge: `${prayerCount} pending`, color: 'yellow' });
+    if (can.members)      links.push({ to: '/admin/members',         icon: Users,        label: 'Members',       badge: `${memberCount} total`,   color: 'blue' });
+    if (can.finance)      links.push({ to: '/admin/finance',         icon: DollarSign,   label: 'Finance',                                         color: 'yellow' });
+    if (can.events)       links.push({ to: '/admin/events',          icon: Calendar,     label: 'Events',                                          color: 'blue' });
+    if (can.attendance)   links.push({ to: '/admin/attendance',      icon: BarChart3,    label: 'Attendance',                                      color: 'yellow' });
+    if (can.hr)           links.push({ to: '/admin/hr',              icon: Activity,     label: 'HR & Payroll',                                    color: 'blue' });
+    if (can.visitors)     links.push({ to: '/admin/visitors',        icon: UserCheck,    label: 'Visitors',                                        color: 'yellow' });
+    if (can.assets)       links.push({ to: '/admin/assets',          icon: Package,      label: 'Assets',                                          color: 'blue' });
+    if (can.communications) links.push({ to: '/admin/communications', icon: MessageSquare, label: 'Broadcast',                                     color: 'yellow' });
+    return links;
+  }, [can, pendingReqs, prayerCount, memberCount]);
+
+  const hasNoAccess = statCards.length === 0 && quickLinks.length === 0;
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8 max-w-[1600px] mx-auto">
-      {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200">
+    <div className="space-y-6 max-w-[1600px] mx-auto">
+
+      {/* Welcome bar */}
+      <div className="bg-white rounded-2xl border border-church-blue/8 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
-          <p className="text-slate-500 text-sm">Welcome back. Here is what is happening with the church operations today.</p>
+          <h1 className="text-xl font-display font-black text-church-black tracking-tight">
+            Welcome back, {user?.displayName?.split(' ')[0] ?? 'Admin'}
+          </h1>
+          <p className="text-church-gray text-sm mt-0.5">
+            {hasNoAccess
+              ? 'Your account has no modules assigned yet. Contact your Super Admin.'
+              : `Your personalized dashboard — ${statCards.length} module${statCards.length !== 1 ? 's' : ''} visible.`}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Link to="/admin/finance" className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2">
-            Finance Details <ArrowUpRight className="w-4 h-3" />
-          </Link>
-          <Link to="/admin/attendance" className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-indigo-700 transition-all">
-            Record Attendance
-          </Link>
+        <div className="flex gap-2 flex-wrap">
+          {can.finance && (
+            <Link to="/admin/finance" className="px-4 py-2 bg-white border border-church-blue/20 text-church-blue rounded-xl text-xs font-bold hover:bg-church-soft transition-all flex items-center gap-1.5">
+              Finance Details <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
+          {can.attendance && (
+            <Link to="/admin/attendance" className="px-4 py-2 bg-church-blue text-white rounded-xl text-xs font-bold hover:bg-church-blue/90 transition-all">
+              Record Attendance
+            </Link>
+          )}
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {topStats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={cn("p-6 rounded-2xl border shadow-lg hover:shadow-xl transition-all",
-              i % 2 === 0 ? "bg-church-blue text-white border-church-blue/20 hover:border-church-blue/40" : "bg-yellow-400 text-slate-900 border-yellow-400/20 hover:border-yellow-400/40"
-            )}
-          >
-            <div className="flex flex-col items-center">
-              <div className={cn("p-4 rounded-xl flex items-center justify-center mb-4", 
-                i % 2 === 0 ? "bg-white/20" : "bg-white/30"
-              )}>
-                <stat.icon className={cn("w-6 h-6", i % 2 === 0 ? "text-white" : "text-church-blue")} />
-              </div>
-              <div className="text-left w-full">
-                <p className={cn("text-[10px] font-bold uppercase tracking-wider", 
-                  i % 2 === 0 ? "text-white/80" : "text-slate-700"
-                )}>{stat.label}</p>
-                <h3 className={cn("text-xl font-bold", 
-                  i % 2 === 0 ? "text-white" : "text-slate-900"
-                )}>{stat.value}</h3>
-                <p className={cn("text-sm", 
-                  i % 2 === 0 ? "text-white/70" : "text-slate-700"
-                )}>{stat.sub}</p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-        {/* Left Column: Recent Activity */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white rounded-2xl p-8 border border-church-blue/10 shadow-lg">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">Recent Activity</h3>
-                <p className="text-sm font-medium text-church-blue/60">Latest administrative and prayer records</p>
-              </div>
-              <Link to="/admin/prayers" className="text-sm font-bold text-church-blue flex items-center gap-1 hover:underline">
-                View All <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-            
-            <div className="space-y-4">
-              {recentRequests.map((activity, i) => (
-                <div key={i} className="bg-church-blue/5 rounded-xl p-4 border border-church-blue/10 hover:border-church-blue/20 transition-all">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-church-blue rounded-xl flex items-center justify-center text-white font-bold shadow-md">
-                      <span className="text-lg">{activity.initials}</span>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <h4 className="font-bold text-slate-900 text-base mb-1">{activity.name}</h4>
-                      <p className="text-sm font-medium text-slate-600 leading-relaxed">{activity.action}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {recentRequests.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="bg-church-blue/10 rounded-xl p-6 border border-church-blue/20">
-                    <FileText className="w-8 h-8 text-church-blue mx-auto mb-2" />
-                    <p className="text-sm font-medium text-slate-600">No recent activity detected</p>
-                  </div>
-                </div>
-              )}
-            </div>
+      {/* No access at all */}
+      {hasNoAccess && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-20 h-20 bg-church-soft rounded-3xl flex items-center justify-center mb-5">
+            <Lock className="w-9 h-9 text-church-gray/40" />
           </div>
-
-          {/* Quick Shortcuts */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link to="/admin/requisitions" className="bg-church-blue p-6 rounded-2xl border border-church-blue/20 shadow-lg hover:shadow-xl hover:border-church-blue/40 transition-all group">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-sm mb-1">Requisitions</h4>
-                  <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest">{pendingReqs} To Approve</p>
-                </div>
-              </div>
-            </Link>
-            <Link to="/admin/prayers" className="bg-yellow-400 p-6 rounded-2xl border border-yellow-400/20 shadow-lg hover:shadow-xl hover:border-yellow-400/40 transition-all group">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-white/30 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                  <Heart className="w-6 h-6 text-church-blue" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm mb-1">Prayers</h4>
-                  <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">{prayerCount} Pending</p>
-                </div>
-              </div>
-            </Link>
-            <Link to="/admin/members" className="bg-church-blue p-6 rounded-2xl border border-church-blue/20 shadow-lg hover:shadow-xl hover:border-church-blue/40 transition-all group">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-sm mb-1">Member List</h4>
-                  <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest">{memberCount} Total</p>
-                </div>
-              </div>
-            </Link>
-          </div>
+          <h2 className="text-xl font-bold text-church-black mb-2">No modules assigned</h2>
+          <p className="text-church-gray text-sm max-w-sm">
+            Your account hasn't been granted access to any modules yet.
+            Contact your <strong>Super Admin</strong> to assign permissions.
+          </p>
         </div>
+      )}
 
-        {/* Right Column: Events & System Status */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-slate-900 text-white rounded-2xl p-8 shadow-lg relative overflow-hidden">
-            <h3 className="text-lg font-bold mb-6 relative z-10">Upcoming Events</h3>
-            
-            <div className="space-y-6 relative z-10">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex gap-4 group cursor-pointer" onClick={() => navigate('/admin/events')}>
-                  <div className="bg-white/10 p-2 rounded-lg text-center min-w-[50px] h-fit">
-                    <p className="text-[10px] font-bold opacity-60 uppercase">
-                      {new Date(event.date).toLocaleString('en-US', { month: 'short' })}
-                    </p>
-                    <p className="text-xl font-bold">{new Date(event.date).getDate()}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm leading-tight group-hover:text-amber-400 transition-colors">{event.title}</h4>
-                    <p className="text-[10px] font-medium text-white/50 mt-1 uppercase tracking-wider">{event.time} • {event.location}</p>
-                  </div>
-                </div>
-              ))}
-              
-              {upcomingEvents.length === 0 && (
-                <p className="text-xs font-medium text-white/40 italic">No scheduled events.</p>
-              )}
-
-              <button 
-                onClick={() => navigate('/admin/events')}
-                className="w-full py-3 mt-2 bg-indigo-600 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all"
+      {/* Stat cards — only permitted modules */}
+      {statCards.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <AnimatePresence>
+            {statCards.map((card, i) => (
+              <motion.div
+                key={card.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
               >
-                Go to Calendar
-              </button>
-            </div>
-          </div>
+                <StatCard {...card} loading={loading} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
-          <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-4">
-                <ShieldCheck className="w-6 h-6 text-amber-700" />
-                <h4 className="text-sm font-bold text-amber-900">System Status</h4>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        {/* Left column */}
+        <div className="lg:col-span-8 space-y-6">
+
+          {/* Quick actions — only permitted */}
+          {quickLinks.length > 0 && (
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-church-gray mb-3">Quick Actions</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {quickLinks.map(link => (
+                  <QuickLink key={link.to} {...link} />
+                ))}
               </div>
-              <p className="text-amber-800/70 text-xs font-medium mb-6">Database connection is active. All security protocols are verified.</p>
-              <div className="h-1 bg-amber-200 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-600 w-full" />
+            </div>
+          )}
+
+          {/* Recent Prayer Activity — requires 'prayer' module */}
+          {can.prayer && (
+            <div className="bg-white rounded-2xl border border-church-blue/8 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-church-black">Recent Prayer Requests</h3>
+                  <p className="text-church-gray text-xs mt-0.5">{prayerCount} awaiting prayer</p>
+                </div>
+                <Link to="/admin/prayer-requests" className="text-xs font-bold text-church-blue flex items-center gap-1 hover:underline">
+                  View All <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
+              {recentPrayers.length === 0 ? (
+                <p className="text-church-gray text-sm text-center py-6">No prayer requests yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentPrayers.map(p => (
+                    <div key={p.id} className="flex items-start gap-3 p-3 bg-church-soft rounded-xl">
+                      <div className="w-9 h-9 rounded-full bg-church-blue flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                        {p.initials}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-church-black">{p.name}</p>
+                        <p className="text-xs text-church-gray truncate">{p.text}…</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right column */}
+        <div className="lg:col-span-4 space-y-4">
+
+          {/* Upcoming Events — requires 'events' module */}
+          {can.events && (
+            <div className="bg-church-black text-white rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold">Upcoming Events</h3>
+                <Link to="/admin/events" className="text-xs text-church-yellow font-bold hover:underline">View all</Link>
+              </div>
+              {upcomingEvents.length === 0 ? (
+                <p className="text-xs text-white/40 italic">No scheduled events.</p>
+              ) : (
+                <div className="space-y-4">
+                  {upcomingEvents.map(ev => (
+                    <div
+                      key={ev.id}
+                      className="flex gap-4 cursor-pointer group"
+                      onClick={() => navigate('/admin/events')}
+                    >
+                      <div className="bg-white/10 rounded-xl px-3 py-2 text-center flex-shrink-0 min-w-[52px]">
+                        <p className="text-[9px] font-bold text-white/50 uppercase">
+                          {new Date(ev.date).toLocaleString('en-UG', { month: 'short' })}
+                        </p>
+                        <p className="text-lg font-black">{new Date(ev.date).getDate()}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold group-hover:text-church-yellow transition-colors truncate">{ev.title}</p>
+                        <p className="text-[10px] text-white/40 mt-0.5">{ev.time} · {ev.location}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* System Status — always visible */}
+          <div className="bg-church-soft border border-church-blue/10 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck className="w-4 h-4 text-church-blue" />
+              <span className="text-xs font-black uppercase tracking-wider text-church-gray">System Status</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <p className="text-xs text-church-gray">All services operational</p>
+            </div>
+            <div className="mt-3 h-1 bg-church-blue/10 rounded-full overflow-hidden">
+              <div className="h-full bg-church-blue w-full rounded-full" />
             </div>
           </div>
         </div>

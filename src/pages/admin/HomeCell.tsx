@@ -19,12 +19,14 @@ import {
   collection, onSnapshot, query, orderBy,
   doc, addDoc, deleteDoc, updateDoc, serverTimestamp
 } from 'firebase/firestore';
+import { useAuth } from '@/src/components/AuthContext';
 type MemberPanel =
   | { kind: 'members'; scope: 'zone' | 'cell'; id: string; name: string; code?: string }
   | { kind: 'cells'; id: string; name: string; code?: string }
   | null;
 
 export default function HomeCell() {
+  const { churchId } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [cells, setCells] = useState<Cell[]>([]);
@@ -48,26 +50,29 @@ export default function HomeCell() {
   const [cellZone, setCellZone] = useState<Zone | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'members'), orderBy('createdAt', 'desc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'members'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, snap => {
       setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Member[]);
       setLoading(false);
     }, err => handleFirestoreError(err, OperationType.LIST, 'members'));
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const q = query(collection(db, 'zones'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'zones'), orderBy('name', 'asc'));
     return onSnapshot(q, snap => {
       setZones(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Zone[]);
     }, err => handleFirestoreError(err, OperationType.LIST, 'zones'));
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const q = query(collection(db, 'cells'), orderBy('name', 'asc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId!, 'cells'), orderBy('name', 'asc'));
     return onSnapshot(q, snap => {
       setCells(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Cell[]);
     }, err => handleFirestoreError(err, OperationType.LIST, 'cells'));
-  }, []);
+  }, [churchId]);
 
   // Helpers
   const getCellsInZone = (zoneId: string) => cells.filter(c => c.zoneId === zoneId);
@@ -102,9 +107,9 @@ export default function HomeCell() {
       setSaving(true);
       const payload = { name, code, description: zoneForm.description.trim(), updatedAt: serverTimestamp() };
       if (editingZone) {
-        await updateDoc(doc(db, 'zones', editingZone.id), payload);
+        await updateDoc(doc(db, 'churches', churchId!, 'zones', editingZone.id), payload);
       } else {
-        await addDoc(collection(db, 'zones'), { ...payload, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'churches', churchId!, 'zones'), { ...payload, createdAt: serverTimestamp() });
       }
       setShowZoneModal(false);
       setEditingZone(null);
@@ -119,7 +124,7 @@ export default function HomeCell() {
   const handleDeleteZone = async (zoneId: string) => {
     if (!confirm('Delete this zone? Cells under it will need reassignment.')) return;
     try {
-      await deleteDoc(doc(db, 'zones', zoneId));
+      await deleteDoc(doc(db, 'churches', churchId!, 'zones', zoneId));
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, 'zones');
     }
@@ -154,9 +159,9 @@ export default function HomeCell() {
         updatedAt: serverTimestamp(),
       };
       if (editingCell) {
-        await updateDoc(doc(db, 'cells', editingCell.id), payload);
+        await updateDoc(doc(db, 'churches', churchId!, 'cells', editingCell.id), payload);
       } else {
-        await addDoc(collection(db, 'cells'), { ...payload, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'churches', churchId!, 'cells'), { ...payload, createdAt: serverTimestamp() });
       }
       setShowCellModal(false);
       setEditingCell(null);
@@ -172,7 +177,7 @@ export default function HomeCell() {
   const handleDeleteCell = async (cellId: string) => {
     if (!confirm('Delete this cell? Members assigned here will need reassignment.')) return;
     try {
-      await deleteDoc(doc(db, 'cells', cellId));
+      await deleteDoc(doc(db, 'churches', churchId!, 'cells', cellId));
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, 'cells');
     }

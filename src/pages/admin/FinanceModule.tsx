@@ -23,7 +23,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, update
 import { useAuth } from '@/src/components/AuthContext';
 
 export default function FinanceModule() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
@@ -80,7 +80,8 @@ export default function FinanceModule() {
   const [newExpense, setNewExpense] = useState(initialExpenseState);
 
   useEffect(() => {
-    const q = query(collection(db, 'finance'), orderBy('date', 'desc'));
+    if (!churchId) return;
+    const q = query(collection(db, 'churches', churchId, 'finance'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -93,11 +94,12 @@ export default function FinanceModule() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
+    if (!churchId) return;
     // Fetch Expenses
-    const expenseQuery = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+    const expenseQuery = query(collection(db, 'churches', churchId, 'expenses'), orderBy('date', 'desc'));
     const unsubscribeExpenses = onSnapshot(expenseQuery, (snapshot) => {
       const expenseDocs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -109,16 +111,17 @@ export default function FinanceModule() {
     });
 
     return () => unsubscribeExpenses();
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
+    if (!churchId) return;
     // Fetch Services
-    const unsubscribeServices = onSnapshot(query(collection(db, 'services'), orderBy('name', 'asc')), (snapshot) => {
+    const unsubscribeServices = onSnapshot(query(collection(db, 'churches', churchId, 'services'), orderBy('name', 'asc')), (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
     });
 
     // Fetch Projects
-    const unsubscribeProjects = onSnapshot(query(collection(db, 'projects'), orderBy('name', 'asc')), (snapshot) => {
+    const unsubscribeProjects = onSnapshot(query(collection(db, 'churches', churchId, 'projects'), orderBy('name', 'asc')), (snapshot) => {
       setProjects(snapshot.docs.map(doc => ({ id: doc.id, projectId: doc.data().projectId || doc.id, name: doc.data().name })));
     });
 
@@ -126,29 +129,31 @@ export default function FinanceModule() {
       unsubscribeServices();
       unsubscribeProjects();
     };
-  }, []);
+  }, [churchId]);
 
   useEffect(() => {
-    const unsubscribeCustomTypes = onSnapshot(query(collection(db, 'financeTypes'), orderBy('name', 'asc')), (snapshot) => {
+    if (!churchId) return;
+    const unsubscribeCustomTypes = onSnapshot(query(collection(db, 'churches', churchId, 'financeTypes'), orderBy('name', 'asc')), (snapshot) => {
       setCustomTypes(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
     });
 
     return () => unsubscribeCustomTypes();
-  }, []);
+  }, [churchId]);
 
   const handleInitializeFinanceData = async () => {
+    if (!churchId) return;
     const defaultServices = ['Sunday Morning Service', 'Midweek Service', 'Youth Impact', 'Overnight Prayer', 'Special Program'];
     const defaultProjects = ['Main', 'Building Project', 'Youth Center', 'Sanctuary Sound', 'Evangelism Outreaches'];
 
     try {
       for (const s of defaultServices) {
         if (!services.some(sv => sv.name === s)) {
-          await addDoc(collection(db, 'services'), { name: s, createdAt: serverTimestamp() });
+          await addDoc(collection(db, 'churches', churchId!, 'services'), { name: s, churchId, createdAt: serverTimestamp() });
         }
       }
       for (const p of defaultProjects) {
         if (!projects.some(pj => pj.name === p)) {
-          await addDoc(collection(db, 'projects'), { projectId: `PRJ_${p.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`, name: p, createdAt: serverTimestamp() });
+          await addDoc(collection(db, 'churches', churchId!, 'projects'), { projectId: `PRJ_${p.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`, name: p, churchId, createdAt: serverTimestamp() });
         }
       }
       alert("Financial categories initialized.");
@@ -175,9 +180,10 @@ export default function FinanceModule() {
         typeId: typeId,
       });
       
-      const docRef = await addDoc(collection(db, 'financeTypes'), {
+      const docRef = await addDoc(collection(db, 'churches', churchId!, 'financeTypes'), {
         name: newTypeName.trim(),
         typeId: typeId,
+        churchId,
         createdBy: user?.uid,
         createdAt: serverTimestamp()
       });
@@ -207,10 +213,11 @@ export default function FinanceModule() {
         name: newServiceName,
         id: serviceId,
       });
-      const docRef = await addDoc(collection(db, 'services'), { 
-        name: newServiceName, 
+      const docRef = await addDoc(collection(db, 'churches', churchId!, 'services'), {
+        name: newServiceName,
         id: serviceId,
-        createdAt: serverTimestamp() 
+        churchId,
+        createdAt: serverTimestamp()
       });
       console.log("Service created with ID:", docRef.id);
       setNewServiceName('');
@@ -243,14 +250,15 @@ export default function FinanceModule() {
         createdBy: user?.displayName || user?.email || 'Staff',
       });
       const projectId = `PRJ_${newProjectData.name.trim().toUpperCase().replace(/\s+/g, '_')}_${Date.now()}`;
-      const docRef = await addDoc(collection(db, 'projects'), { 
+      const docRef = await addDoc(collection(db, 'churches', churchId!, 'projects'), {
         projectId,
-        name: newProjectData.name.trim(), 
+        name: newProjectData.name.trim(),
         targetAmount: newProjectData.targetAmount || 0,
         status: newProjectData.status || 'Active',
         description: newProjectData.description || '',
         startDate: newProjectData.startDate || null,
         endDate: newProjectData.endDate || null,
+        churchId,
         createdBy: user?.displayName || user?.email || 'Staff',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -268,11 +276,11 @@ export default function FinanceModule() {
 
   const handleCreateRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !churchId) return;
 
     try {
       if (editingRecord) {
-        const docRef = doc(db, 'finance', editingRecord.id!);
+        const docRef = doc(db, 'churches', churchId, 'finance', editingRecord.id!);
         await updateDoc(docRef, {
           ...newRecord,
           amount: Number(newRecord.amount),
@@ -281,10 +289,11 @@ export default function FinanceModule() {
         });
         alert("Financial record updated successfully.");
       } else {
-        await addDoc(collection(db, 'finance'), {
+        await addDoc(collection(db, 'churches', churchId, 'finance'), {
           ...newRecord,
           amount: Number(newRecord.amount),
           date: new Date(newRecord.date).toISOString(),
+          churchId,
           recordedBy: user.uid,
           createdAt: serverTimestamp(),
           currency: 'UGX'
@@ -316,7 +325,7 @@ export default function FinanceModule() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this financial record?")) return;
     try {
-      await deleteDoc(doc(db, 'finance', id));
+      await deleteDoc(doc(db, 'churches', churchId!, 'finance', id));
       alert("Record deleted successfully.");
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'finance');
@@ -337,11 +346,11 @@ export default function FinanceModule() {
   // Expense Handlers
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !churchId) return;
 
     try {
       if (editingExpense) {
-        const docRef = doc(db, 'expenses', editingExpense.id!);
+        const docRef = doc(db, 'churches', churchId, 'expenses', editingExpense.id!);
         await updateDoc(docRef, {
           ...newExpense,
           amount: Number(newExpense.amount),
@@ -350,10 +359,11 @@ export default function FinanceModule() {
         });
         alert("Expense updated successfully.");
       } else {
-        await addDoc(collection(db, 'expenses'), {
+        await addDoc(collection(db, 'churches', churchId, 'expenses'), {
           ...newExpense,
           amount: Number(newExpense.amount),
           date: new Date(newExpense.date).toISOString(),
+          churchId,
           recordedBy: user.uid,
           createdAt: serverTimestamp(),
           status: 'approved'
@@ -383,7 +393,7 @@ export default function FinanceModule() {
   const handleDeleteExpense = async (id: string) => {
     if (!confirm("Are you sure you want to delete this expense?")) return;
     try {
-      await deleteDoc(doc(db, 'expenses', id));
+      await deleteDoc(doc(db, 'churches', churchId!, 'expenses', id));
       alert("Expense deleted successfully.");
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'expenses');

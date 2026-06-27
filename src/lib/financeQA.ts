@@ -12,30 +12,30 @@ import {
 } from '../types';
 import { formatCurrency } from './utils';
 
-// ─── Data Fetchers ────────────────────────────────────────────────────────────
+// ─── Data Fetchers (church-scoped) ───────────────────────────────────────────
 
-async function fetchAllIncome(): Promise<FinanceRecord[]> {
-  const snap = await getDocs(collection(db, 'finance'));
+async function fetchAllIncome(churchId: string): Promise<FinanceRecord[]> {
+  const snap = await getDocs(collection(db, 'churches', churchId, 'finance'));
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as FinanceRecord));
 }
 
-async function fetchAllExpenses(): Promise<Expense[]> {
-  const snap = await getDocs(collection(db, 'expenses'));
+async function fetchAllExpenses(churchId: string): Promise<Expense[]> {
+  const snap = await getDocs(collection(db, 'churches', churchId, 'expenses'));
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
 }
 
-async function fetchAllPledges(): Promise<Pledge[]> {
-  const snap = await getDocs(collection(db, 'pledges'));
+async function fetchAllPledges(churchId: string): Promise<Pledge[]> {
+  const snap = await getDocs(collection(db, 'churches', churchId, 'pledges'));
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Pledge));
 }
 
-async function fetchAllPayroll(): Promise<PayrollRecord[]> {
-  const snap = await getDocs(collection(db, 'payroll'));
+async function fetchAllPayroll(churchId: string): Promise<PayrollRecord[]> {
+  const snap = await getDocs(collection(db, 'churches', churchId, 'payroll'));
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord));
 }
 
-async function fetchAllRequisitions(): Promise<Requisition[]> {
-  const snap = await getDocs(collection(db, 'requisitions'));
+async function fetchAllRequisitions(churchId: string): Promise<Requisition[]> {
+  const snap = await getDocs(collection(db, 'churches', churchId, 'requisitions'));
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Requisition));
 }
 
@@ -134,14 +134,14 @@ export interface QAAnswer {
 
 // ─── Main Engine ──────────────────────────────────────────────────────────────
 
-export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnswer> {
+export async function answerFinanceQuestion(rawQuestion: string, churchId: string): Promise<QAAnswer> {
   const q = rawQuestion.toLowerCase().trim();
 
   // ── 1. TREASURY / BALANCE ──────────────────────────────────────────────────
   if (
     /treasury|how much (money|funds|cash) do we have|available (balance|funds|money)|current balance|what.?s (our|the) balance|how much is in/.test(q)
   ) {
-    const [income, expenses] = await Promise.all([fetchAllIncome(), fetchAllExpenses()]);
+    const [income, expenses] = await Promise.all([fetchAllIncome(churchId), fetchAllExpenses(churchId)]);
     const totalIncome = income.reduce((s, r) => s + r.amount, 0);
     const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
     const balance = totalIncome - totalExpenses;
@@ -169,7 +169,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
   // ── 2. TITHE ──────────────────────────────────────────────────────────────
   if (/tithe/.test(q)) {
     const period = detectPeriod(q);
-    const income = await fetchAllIncome();
+    const income = await fetchAllIncome(churchId);
     const tithes = income.filter(r => r.type === TransactionType.TITHE && period.filter(r.date));
     const total = tithes.reduce((s, r) => s + r.amount, 0);
 
@@ -198,7 +198,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
   // ── 3. OFFERING ───────────────────────────────────────────────────────────
   if (/offering/.test(q)) {
     const period = detectPeriod(q);
-    const income = await fetchAllIncome();
+    const income = await fetchAllIncome(churchId);
     const offerings = income.filter(r => r.type === TransactionType.OFFERING && period.filter(r.date));
     const total = offerings.reduce((s, r) => s + r.amount, 0);
 
@@ -226,7 +226,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
   // ── 4. DONATION ───────────────────────────────────────────────────────────
   if (/donation|donate/.test(q)) {
     const period = detectPeriod(q);
-    const income = await fetchAllIncome();
+    const income = await fetchAllIncome(churchId);
     const donations = income.filter(r => r.type === TransactionType.DONATION && period.filter(r.date));
     const total = donations.reduce((s, r) => s + r.amount, 0);
 
@@ -253,7 +253,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
     /total income|how much (have we|did we) (receive|collect)|income (this|last|in)|contribution|how much came in|total collection|how much money (came|received)/.test(q)
   ) {
     const period = detectPeriod(q);
-    const income = await fetchAllIncome();
+    const income = await fetchAllIncome(churchId);
     const filtered = income.filter(r => period.filter(r.date));
     const total = filtered.reduce((s, r) => s + r.amount, 0);
 
@@ -289,7 +289,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
   // ── 6. PAYROLL / SALARY ───────────────────────────────────────────────────
   if (/payroll|salari|employee pay|staff pay|how much (do we pay|are we paying)/.test(q)) {
     const period = detectPeriod(q);
-    const payroll = await fetchAllPayroll();
+    const payroll = await fetchAllPayroll(churchId);
     const filtered = payroll.filter(p => period.filter(p.paymentDate));
 
     const totalDue = filtered.reduce((s, p) => s + p.totalSalary, 0);
@@ -328,7 +328,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
     /expense|how much (have we|did we) spend|spending|expenditure|how much we (spent|paid out)|daily (cost|expense)/.test(q)
   ) {
     const period = detectPeriod(q);
-    const expenses = await fetchAllExpenses();
+    const expenses = await fetchAllExpenses(churchId);
 
     // Check for specific expense type
     const expenseTypeMap: Record<string, ExpenseType> = {
@@ -394,7 +394,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
 
   // ── 8. PLEDGES ────────────────────────────────────────────────────────────
   if (/pledge/.test(q)) {
-    const pledges = await fetchAllPledges();
+    const pledges = await fetchAllPledges(churchId);
     const fulfilled = pledges.filter(p => p.status === 'Fulfilled');
     const pending = pledges.filter(p => p.status === 'Pending');
     const totalAmount = pledges.reduce((s, p) => s + p.amount, 0);
@@ -435,7 +435,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
 
   // ── 9. REQUISITIONS ───────────────────────────────────────────────────────
   if (/requisition/.test(q)) {
-    const reqs = await fetchAllRequisitions();
+    const reqs = await fetchAllRequisitions(churchId);
     const pending = reqs.filter(r => r.status === RequisitionStatus.PENDING);
     const approved = reqs.filter(r => r.status === RequisitionStatus.APPROVED);
     const declined = reqs.filter(r => r.status === RequisitionStatus.DECLINED);
@@ -467,7 +467,7 @@ export async function answerFinanceQuestion(rawQuestion: string): Promise<QAAnsw
   if (/summary|report|overview|financial (status|picture)|how are we doing/.test(q)) {
     const period = detectPeriod(q);
     const [income, expenses, pledges, payroll] = await Promise.all([
-      fetchAllIncome(), fetchAllExpenses(), fetchAllPledges(), fetchAllPayroll(),
+      fetchAllIncome(churchId), fetchAllExpenses(churchId), fetchAllPledges(churchId), fetchAllPayroll(churchId),
     ]);
 
     const filtIncome = income.filter(r => period.filter(r.date));

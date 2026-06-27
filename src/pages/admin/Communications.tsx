@@ -18,7 +18,7 @@ import { useAuth } from '@/src/components/AuthContext';
 import { Broadcast, Member } from '@/src/types';
 
 export default function Communications() {
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
   const [message, setMessage] = useState('');
   const [target, setTarget] = useState('all'); 
   const [method, setMethod] = useState<'SMS' | 'Email'>('SMS');
@@ -29,16 +29,18 @@ export default function Communications() {
   const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
 
   useEffect(() => {
+    if (!churchId) return;
+
     // Fetch departments and then counts
-    const unsubscribeDepts = onSnapshot(query(collection(db, 'departments'), orderBy('name', 'asc')), (snapshotDepts) => {
+    const unsubscribeDepts = onSnapshot(query(collection(db, 'churches', churchId, 'departments'), orderBy('name', 'asc')), (snapshotDepts) => {
       const depts = snapshotDepts.docs.map(d => ({ id: d.id, name: d.data().name }));
       setDepartments(depts);
 
       // Fetch member counts
-      getDocs(collection(db, 'members')).then(snapshotMembers => {
+      getDocs(collection(db, 'churches', churchId, 'members')).then(snapshotMembers => {
         const members = snapshotMembers.docs.map(d => d.data() as Member);
         const counts: { [key: string]: number } = { all: members.length };
-        
+
         depts.forEach(dept => {
           counts[dept.name.toLowerCase()] = members.filter(m => m.categories?.includes(dept.name)).length;
         });
@@ -46,7 +48,7 @@ export default function Communications() {
       });
     });
 
-    const q = query(collection(db, 'broadcasts'), orderBy('sentAt', 'desc'));
+    const q = query(collection(db, 'churches', churchId, 'broadcasts'), orderBy('sentAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Broadcast[];
       setHistory(docs);
@@ -57,7 +59,7 @@ export default function Communications() {
       unsubscribe();
       unsubscribeDepts();
     };
-  }, []);
+  }, [churchId]);
 
   const handleSendBroadcast = async () => {
     if (!message.trim() || !user) return;
@@ -69,7 +71,8 @@ export default function Communications() {
       // In a real app, this would trigger an SMS or Email API. 
       const broadcastCount = memberCounts[target] || 0;
       
-      await addDoc(collection(db, 'broadcasts'), {
+      await addDoc(collection(db, 'churches', churchId!, 'broadcasts'), {
+        churchId: churchId!,
         title: `${method} to ${target.charAt(0).toUpperCase() + target.slice(1)}`,
         message,
         sentBy: user.displayName,

@@ -5,9 +5,10 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", sans-serif;
 
-  --color-church-blue: #1E40AF;
-  --color-church-yellow: #FDE047;
-  --color-church-yellow-dark: #EAB308;
+  --color-church-blue: #1B3A8C;        /* deep blue */
+  --color-church-blue-dark: #142D6E;   /* darker blue */
+  --color-church-yellow: #FDE047;      /* bright pure yellow */
+  --color-church-yellow-dark: #FACC15; /* slightly deeper yellow for hover */
   --color-church-white: #FFFFFF;
   --color-church-soft: #F8FAFC;
   --color-church-black: #0F172A;
